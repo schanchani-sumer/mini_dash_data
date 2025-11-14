@@ -366,6 +366,46 @@
             flex-shrink: 0;
         }
 
+        .status-badge {
+            padding: 0.125rem 0.375rem;
+            border-radius: 2px;
+            font-size: 0.625rem;
+            font-family: 'JetBrains Mono', monospace;
+            white-space: nowrap;
+            flex-shrink: 0;
+            font-weight: 600;
+        }
+
+        .status-ga {
+            background: rgba(8, 145, 178, 0.2);
+            color: var(--electric-blue-dim);
+            border: 1px solid var(--electric-blue-dim);
+        }
+
+        .status-preview {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+            border: 1px solid var(--warning);
+        }
+
+        .status-beta {
+            background: rgba(139, 92, 246, 0.2);
+            color: #a78bfa;
+            border: 1px solid #a78bfa;
+        }
+
+        .status-development {
+            background: rgba(107, 114, 128, 0.2);
+            color: var(--text-tertiary);
+            border: 1px solid var(--border);
+        }
+
+        .status-unknown {
+            background: rgba(107, 114, 128, 0.1);
+            color: var(--text-tertiary);
+            border: 1px solid var(--border);
+        }
+
         /* Legend - Compact */
         .legend {
             display: flex;
@@ -481,6 +521,22 @@
                         <span class="slider-value">0.00</span>
                     </div>
                 </div>
+
+                <div class="control-card">
+                    <label class="control-label">Max Worst Case Yard Error</label>
+                    <div class="slider-container">
+                        <input type="range" id="worstCaseYardErrorSlider" min="0" max="10" value="10" step="0.1">
+                        <span class="slider-value">10.0</span>
+                    </div>
+                </div>
+
+                <div class="control-card">
+                    <label class="control-label">Max Avg Yard Error</label>
+                    <div class="slider-container">
+                        <input type="range" id="avgYardErrorSlider" min="0" max="10" value="10" step="0.1">
+                        <span class="slider-value">10.0</span>
+                    </div>
+                </div>
             </div>
 
             <div class="legend">
@@ -548,7 +604,9 @@
         let ws = null;
         let currentFilters = {
             minInstances: 10,
-            minCompleteness: 0
+            minCompleteness: 0,
+            maxWorstCaseYardError: 10,
+            maxAvgYardError: 10
         };
 
         let playMetrics = [];
@@ -675,9 +733,13 @@
                 const typeAbbrev = metric.type === 'boolean' ? 'BOOL' :
                                   metric.type === 'categorical' ? 'CAT' : 'CONT';
 
+                const status = metric.status || 'UNKNOWN';
+                const statusClass = `status-${status.toLowerCase()}`;
+
                 barGroup.innerHTML = `
                     <div class="attribute-info">
                         <div class="attribute-label" title="${metric.attribute}">${metric.attribute}</div>
+                        <span class="status-badge ${statusClass}">${status}</span>
                         <span class="meta-badge">${typeAbbrev}</span>
                         <span class="meta-badge">${metric.n_instances}</span>
                     </div>
@@ -721,17 +783,57 @@
         }
 
         // Slider controls
+        // Update display value in real-time
         document.getElementById('instancesSlider').addEventListener('input', function(e) {
-            currentFilters.minInstances = parseInt(e.target.value);
             e.target.nextElementSibling.textContent = e.target.value;
+        });
+
+        // Update filters and re-render only when slider is released
+        document.getElementById('instancesSlider').addEventListener('change', function(e) {
+            currentFilters.minInstances = parseInt(e.target.value);
             renderCharts(); // Just re-render, no need to fetch
         });
 
+        // Update display value in real-time
         document.getElementById('completenessSlider').addEventListener('input', function(e) {
-            currentFilters.minCompleteness = parseFloat(e.target.value);
             e.target.nextElementSibling.textContent = parseFloat(e.target.value).toFixed(2);
+        });
+
+        // Re-fetch data only when slider is released
+        document.getElementById('completenessSlider').addEventListener('change', function(e) {
+            currentFilters.minCompleteness = parseFloat(e.target.value);
 
             // Re-fetch data from server with new completeness filter
+            requestMetrics('play');
+            requestMetrics('player_play');
+        });
+
+        // Worst case yard error slider
+        // Update display value in real-time
+        document.getElementById('worstCaseYardErrorSlider').addEventListener('input', function(e) {
+            e.target.nextElementSibling.textContent = parseFloat(e.target.value).toFixed(1);
+        });
+
+        // Re-fetch data only when slider is released
+        document.getElementById('worstCaseYardErrorSlider').addEventListener('change', function(e) {
+            currentFilters.maxWorstCaseYardError = parseFloat(e.target.value);
+
+            // Re-fetch data from server with new filter
+            requestMetrics('play');
+            requestMetrics('player_play');
+        });
+
+        // Avg yard error slider
+        // Update display value in real-time
+        document.getElementById('avgYardErrorSlider').addEventListener('input', function(e) {
+            e.target.nextElementSibling.textContent = parseFloat(e.target.value).toFixed(1);
+        });
+
+        // Re-fetch data only when slider is released
+        document.getElementById('avgYardErrorSlider').addEventListener('change', function(e) {
+            currentFilters.maxAvgYardError = parseFloat(e.target.value);
+
+            // Re-fetch data from server with new filter
             requestMetrics('play');
             requestMetrics('player_play');
         });

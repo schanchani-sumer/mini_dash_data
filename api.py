@@ -9,9 +9,10 @@ Core computation logic is transport-agnostic.
 """
 
 import numpy as np
+import csv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from eval_metrics import (
     calculate_r2,
@@ -24,6 +25,35 @@ from applicability import load_applicability_rules, is_applicable
 # Import transport heads
 from transport_heads.http import router as http_router, PlayRecord
 from transport_heads.websocket import router as ws_router
+
+# Load metadata once at startup
+_metadata_cache: Optional[Dict[str, Dict[str, str]]] = None
+
+def load_metadata() -> Dict[str, Dict[str, str]]:
+    """Load metadata.csv and create lookup for attribute status and type"""
+    global _metadata_cache
+    if _metadata_cache is not None:
+        return _metadata_cache
+
+    metadata = {}
+    try:
+        with open('metadata.csv', 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                attr = row.get('attribute')
+                if attr:
+                    metadata[attr] = {
+                        'status': row.get('status', ''),
+                        'entity': row.get('entity', ''),
+                        'target_type': row.get('target_type', '')
+                    }
+        _metadata_cache = metadata
+        print(f"Loaded metadata for {len(metadata)} attributes")
+    except Exception as e:
+        print(f"Warning: Could not load metadata.csv: {e}")
+        _metadata_cache = {}
+
+    return _metadata_cache
 
 
 # ============================================================================
@@ -66,10 +96,13 @@ def compute_metrics(records: List[PlayRecord]) -> List[Dict[str, Any]]:
         records: List of play/player_play records
 
     Returns:
-        List of attribute metrics with cv_xy_score and batch_xy_score
+        List of attribute metrics with cv_xy_score, batch_xy_score, and status
     """
     if not records:
         return []
+
+    # Load metadata for status lookup
+    metadata = load_metadata()
 
     # Load applicability rules from metadata
     try:
@@ -146,9 +179,14 @@ def compute_metrics(records: List[PlayRecord]) -> List[Dict[str, Any]]:
             batch_score = calculate_brier_skill_score(gt_vals, batch_vals, is_binary, baseline_freq)
             metric_name = "bss"
 
+        # Get status from metadata
+        attr_metadata = metadata.get(attr, {})
+        status = attr_metadata.get('status', 'UNKNOWN')
+
         results.append({
             "attribute": attr,
             "type": attr_type,
+            "status": status,
             "metric_name": metric_name,
             "cv_xy_score": round(cv_score, 4) if cv_score is not None and not np.isnan(cv_score) else None,
             "batch_xy_score": round(batch_score, 4) if batch_score is not None and not np.isnan(batch_score) else None,

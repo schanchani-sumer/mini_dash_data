@@ -77,6 +77,18 @@ def apply_filters(records: List[Dict], filters: Dict[str, Any]) -> List[Dict]:
         filtered = [r for r in filtered
                    if (r['data'].get('tracked_players') or 0) >= min_tracked]
 
+    # Filter by worst case yard error (max threshold)
+    if filters.get('maxWorstCaseYardError'):
+        max_error = filters['maxWorstCaseYardError']
+        filtered = [r for r in filtered
+                   if (r['data'].get('worst_case_avg_pos_error_yards') or float('inf')) <= max_error]
+
+    # Filter by avg yard error (max threshold)
+    if filters.get('maxAvgYardError'):
+        max_error = filters['maxAvgYardError']
+        filtered = [r for r in filtered
+                   if (r['data'].get('overall_median_pos_error_yards') or float('inf')) <= max_error]
+
     return filtered
 
 
