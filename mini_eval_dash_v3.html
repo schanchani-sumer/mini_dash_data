@@ -73,9 +73,36 @@
         /* Controls - Compact */
         .controls {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(6, 1fr);
+            grid-template-rows: auto auto;
             gap: 0.5rem;
             margin-bottom: 1rem;
+        }
+
+        .control-card.thresholds {
+            grid-column: span 4; /* 4/6 = 2/3 */
+        }
+
+        .control-card.metrics-top {
+            grid-column: span 2; /* 2/6 = 1/3 */
+        }
+
+        .control-card.filters {
+            grid-column: span 2; /* 2/6 */
+        }
+
+        .control-card.legend-box {
+            grid-column: span 2; /* 2/6 - more space for text */
+        }
+
+        .control-card.metrics-bottom {
+            grid-column: span 2; /* 2/6 */
+        }
+
+        .control-card.metrics-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
         }
 
         .control-card {
@@ -171,14 +198,6 @@
             font-size: 0.75rem;
             color: var(--electric-blue-dim);
             font-weight: 500;
-        }
-
-        /* Stats Grid - Compact */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 0.5rem;
-            margin-bottom: 1rem;
         }
 
         .stat-card {
@@ -428,7 +447,7 @@
 
         .status-filter-btn.active {
             opacity: 1;
-            box-shadow: 0 0 12px currentColor;
+            box-shadow: 0 0 6px currentColor;
         }
 
         .status-filter-btn.ga {
@@ -439,7 +458,7 @@
 
         .status-filter-btn.ga.active {
             background: rgba(8, 145, 178, 0.3);
-            box-shadow: 0 0 16px var(--electric-blue-dim);
+            box-shadow: 0 0 8px var(--electric-blue-dim);
         }
 
         .status-filter-btn.preview {
@@ -450,7 +469,7 @@
 
         .status-filter-btn.preview.active {
             background: rgba(245, 158, 11, 0.3);
-            box-shadow: 0 0 16px var(--warning);
+            box-shadow: 0 0 8px var(--warning);
         }
 
         .status-filter-btn.beta {
@@ -461,7 +480,7 @@
 
         .status-filter-btn.beta.active {
             background: rgba(139, 92, 246, 0.3);
-            box-shadow: 0 0 16px #a78bfa;
+            box-shadow: 0 0 8px #a78bfa;
         }
 
         .status-filter-btn.development {
@@ -472,19 +491,58 @@
 
         .status-filter-btn.development.active {
             background: rgba(107, 114, 128, 0.3);
-            box-shadow: 0 0 16px var(--text-tertiary);
+            box-shadow: 0 0 8px var(--text-tertiary);
+        }
+
+        .status-filter-btn.categorical {
+            background: rgba(34, 197, 94, 0.1);
+            color: rgba(74, 222, 128, 0.6);
+            border-color: rgba(74, 222, 128, 0.3);
+        }
+
+        .status-filter-btn.categorical.active {
+            background: rgba(34, 197, 94, 0.15);
+            color: rgba(74, 222, 128, 0.8);
+            border-color: rgba(74, 222, 128, 0.5);
+            box-shadow: none;
+        }
+
+        .status-filter-btn.boolean {
+            background: rgba(236, 72, 153, 0.1);
+            color: rgba(244, 114, 182, 0.6);
+            border-color: rgba(244, 114, 182, 0.3);
+        }
+
+        .status-filter-btn.boolean.active {
+            background: rgba(236, 72, 153, 0.15);
+            color: rgba(244, 114, 182, 0.8);
+            border-color: rgba(244, 114, 182, 0.5);
+            box-shadow: none;
+        }
+
+        .status-filter-btn.continuous {
+            background: rgba(96, 165, 250, 0.1);
+            color: rgba(96, 165, 250, 0.6);
+            border-color: rgba(96, 165, 250, 0.3);
+        }
+
+        .status-filter-btn.continuous.active {
+            background: rgba(96, 165, 250, 0.15);
+            color: rgba(96, 165, 250, 0.8);
+            border-color: rgba(96, 165, 250, 0.5);
+            box-shadow: none;
         }
 
         /* Legend - Compact */
         .legend {
             display: flex;
-            justify-content: center;
-            gap: 1.5rem;
-            margin-bottom: 1rem;
-            padding: 0.5rem;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-subtle);
+            flex-direction: column;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
             border-radius: 4px;
+            min-width: 200px;
         }
 
         .legend-item {
@@ -502,9 +560,9 @@
         .legend-text {
             font-size: 0.6875rem;
             color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.025em;
+            letter-spacing: 0.015em;
             font-weight: 500;
+            line-height: 1.3;
         }
 
         /* Animations */
@@ -528,12 +586,29 @@
             .charts-wrapper {
                 grid-template-columns: 1fr;
             }
+
+            .controls {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
         }
 
         .connection-status {
             position: fixed;
             top: 1rem;
             right: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            z-index: 1000;
+        }
+
+        .status-indicator {
             padding: 0.375rem 0.75rem;
             background: var(--bg-elevated);
             border: 1px solid var(--border);
@@ -559,12 +634,59 @@
         .status-dot.disconnected {
             background: var(--critical);
         }
+
+        /* Tabs */
+        .tabs-container {
+            margin-bottom: 1.5rem;
+        }
+
+        .tabs-nav {
+            display: flex;
+            gap: 0.5rem;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 1rem;
+        }
+
+        .tab-button {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: all 200ms ease-out;
+            margin-bottom: -2px;
+        }
+
+        .tab-button:hover {
+            color: var(--text-primary);
+            background: rgba(6, 182, 212, 0.05);
+        }
+
+        .tab-button.active {
+            color: var(--electric-blue);
+            border-bottom-color: var(--electric-blue);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
     <div class="connection-status">
-        <div class="status-dot" id="statusDot"></div>
-        <span id="statusText">Connecting...</span>
+        <div class="status-indicator">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">Connecting...</span>
+        </div>
     </div>
 
     <div class="container">
@@ -574,91 +696,102 @@
         </div>
 
         <div id="mainContent" style="display: none;">
+            <!-- Tabs Navigation -->
+            <div class="tabs-container">
+                <div class="tabs-nav">
+                    <button class="tab-button active" data-tab="skill-score">Skill Score Comparisons</button>
+                    <button class="tab-button" data-tab="accuracy">Accuracy Comparisons</button>
+                </div>
+
+                <!-- Tab 1: Skill Score Comparisons -->
+                <div class="tab-content active" id="skill-score-tab">
             <div class="controls">
-                <div class="control-card">
-                    <label class="control-label">Min Instances (per attr)</label>
-                    <div class="slider-container">
-                        <input type="range" id="instancesSlider" min="0" max="100" value="10" step="1">
-                        <span class="slider-value">10</span>
+                <!-- Top Left: Sliders (2/3) -->
+                <div class="control-card thresholds">
+                    <label class="control-label">Thresholds</label>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div class="slider-container">
+                            <label style="font-size: 0.8125rem; color: var(--text-secondary); min-width: 200px; font-weight: 500;">Min Completeness</label>
+                            <input type="range" id="completenessSlider" min="0.62" max="1" value="0.62" step="0.01">
+                            <span class="slider-value">0.62</span>
+                        </div>
+                        <div class="slider-container">
+                            <label style="font-size: 0.8125rem; color: var(--text-secondary); min-width: 200px; font-weight: 500;">Max Worst Case Yard Error</label>
+                            <input type="range" id="worstCaseYardErrorSlider" min="0.35" max="12.7" value="12.7" step="0.1">
+                            <span class="slider-value">12.7</span>
+                        </div>
+                        <div class="slider-container">
+                            <label style="font-size: 0.8125rem; color: var(--text-secondary); min-width: 200px; font-weight: 500;">Max Avg Yard Error</label>
+                            <input type="range" id="avgYardErrorSlider" min="0.19" max="1.9" value="1.9" step="0.01">
+                            <span class="slider-value">1.90</span>
+                        </div>
                     </div>
                 </div>
 
-                <div class="control-card">
-                    <label class="control-label">Min Completeness</label>
-                    <div class="slider-container">
-                        <input type="range" id="completenessSlider" min="0" max="1" value="0" step="0.01">
-                        <span class="slider-value">0.00</span>
+                <!-- Top Right: Metrics (1/3) -->
+                <div class="control-card metrics-container metrics-top">
+                    <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 0.625rem 0.75rem; flex: 1;">
+                        <div class="stat-value" id="avgCv" style="font-size: 1.5rem; margin-bottom: 0.25rem;">—</div>
+                        <div class="stat-label">CV vs NGS (XY API)</div>
+                    </div>
+                    <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 0.625rem 0.75rem; flex: 1;">
+                        <div class="stat-value" id="avgBatch" style="font-size: 1.5rem; margin-bottom: 0.25rem;">—</div>
+                        <div class="stat-label">XY vs Batch API (NGS)</div>
                     </div>
                 </div>
 
-                <div class="control-card">
-                    <label class="control-label">Max Worst Case Yard Error</label>
-                    <div class="slider-container">
-                        <input type="range" id="worstCaseYardErrorSlider" min="0" max="10" value="10" step="0.1">
-                        <span class="slider-value">10.0</span>
+                <!-- Bottom Left: Filters (1/3) -->
+                <div class="control-card filters">
+                    <label class="control-label">Filters</label>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-top: 0.5rem;">
+                        <div class="status-filter-btn ga active" data-status="GA" data-tab="skill-score">GA</div>
+                        <div class="status-filter-btn preview active" data-status="PREVIEW" data-tab="skill-score">PREV</div>
+                        <div class="status-filter-btn beta active" data-status="BETA" data-tab="skill-score">BETA</div>
+                        <div class="status-filter-btn development" data-status="DEVELOPMENT" data-tab="skill-score">DEV</div>
+                        <div style="width: 1px; height: 20px; background: var(--border); margin: 0 0.25rem;"></div>
+                        <div class="status-filter-btn categorical active" data-type="categorical" data-tab="skill-score">CAT</div>
+                        <div class="status-filter-btn boolean active" data-type="boolean" data-tab="skill-score">BOOL</div>
+                        <div class="status-filter-btn continuous active" data-type="continuous" data-tab="skill-score">CONT</div>
                     </div>
                 </div>
 
-                <div class="control-card">
-                    <label class="control-label">Max Avg Yard Error</label>
-                    <div class="slider-container">
-                        <input type="range" id="avgYardErrorSlider" min="0" max="10" value="10" step="0.1">
-                        <span class="slider-value">10.0</span>
+                <!-- Bottom Middle: Legend (1/3) -->
+                <div class="control-card legend-box">
+                    <label class="control-label">Comparisons</label>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
+                        <div style="display: flex; align-items: center; gap: 0.625rem;">
+                            <div style="width: 24px; height: 8px; background: var(--electric-blue-dim); border-radius: 2px; flex-shrink: 0;"></div>
+                            <span style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4; white-space: nowrap;">CV Data vs NGS Data (Both XY API)</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.625rem;">
+                            <div style="width: 24px; height: 8px; background: var(--text-tertiary); border-radius: 2px; flex-shrink: 0;"></div>
+                            <span style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4; white-space: nowrap;">XY API vs Batch API (Both NGS Data)</span>
+                        </div>
                     </div>
                 </div>
 
-                <div class="control-card">
-                    <label class="control-label">Attribute Status</label>
-                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.5rem;">
-                        <div class="status-filter-btn ga active" data-status="GA">GA</div>
-                        <div class="status-filter-btn preview active" data-status="PREVIEW">PREVIEW</div>
-                        <div class="status-filter-btn beta active" data-status="BETA">BETA</div>
-                        <div class="status-filter-btn development" data-status="DEVELOPMENT">DEV</div>
+                <!-- Bottom Right: Attribute Counts (1/3) -->
+                <div class="control-card metrics-bottom" style="padding: 0.5rem;">
+                    <label class="control-label" style="margin-bottom: 0.5rem;">Attributes</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 0.5rem 0.75rem; flex: 1; display: flex; align-items: center; justify-content: space-between;">
+                            <div class="stat-label" style="margin: 0;">Play Attrs</div>
+                            <div class="stat-value" id="playCount" style="font-size: 1.125rem; margin: 0;">—</div>
+                        </div>
+                        <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 0.5rem 0.75rem; flex: 1; display: flex; align-items: center; justify-content: space-between;">
+                            <div class="stat-label" style="margin: 0;">Player Attrs</div>
+                            <div class="stat-value" id="playerPlayCount" style="font-size: 1.125rem; margin: 0;">—</div>
+                        </div>
                     </div>
-                </div>
-            </div>
-
-            <div class="legend">
-                <div class="legend-item">
-                    <div class="legend-box" style="background: var(--electric-blue-dim);"></div>
-                    <span class="legend-text">CV Data + XY Model | NGS Data + XY Model</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-box" style="background: var(--text-tertiary);"></div>
-                    <span class="legend-text">NGS Data + XY Model | NGS Data + Batch Model</span>
-                </div>
-            </div>
-
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value" id="avgCv">—</div>
-                    <div class="stat-label">Avg CV Score</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="avgBatch">—</div>
-                    <div class="stat-label">Avg Batch Score</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="playCount">—</div>
-                    <div class="stat-label">Play Attrs</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="playerPlayCount">—</div>
-                    <div class="stat-label">Player Attrs</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="filteredPlays">—</div>
-                    <div class="stat-label">Plays (Filtered)</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="filteredPlayerPlays">—</div>
-                    <div class="stat-label">Player Plays (Filtered)</div>
                 </div>
             </div>
 
             <div class="charts-wrapper">
                 <div class="charts-column">
-                    <div class="column-header">Play Attributes</div>
+                    <div class="column-header">
+                        Play Attributes
+                        <span style="float: right; color: var(--electric-blue-dim); font-family: 'JetBrains Mono', monospace;"><span id="filteredPlays">—</span> Plays</span>
+                    </div>
                     <div class="chart-container">
                         <div class="chart-scroll">
                             <div id="playCharts" class="bar-chart"></div>
@@ -666,7 +799,10 @@
                     </div>
                 </div>
                 <div class="charts-column">
-                    <div class="column-header">Player Play Attributes</div>
+                    <div class="column-header">
+                        Player Play Attributes
+                        <span style="float: right; color: var(--electric-blue-dim); font-family: 'JetBrains Mono', monospace;"><span id="filteredPlayerPlays">—</span> Players</span>
+                    </div>
                     <div class="chart-container">
                         <div class="chart-scroll">
                             <div id="playerPlayCharts" class="bar-chart"></div>
@@ -674,6 +810,121 @@
                     </div>
                 </div>
             </div>
+                </div>
+                <!-- End Tab 1 -->
+
+                <!-- Tab 2: Accuracy Comparisons -->
+                <div class="tab-content" id="accuracy-tab">
+            <div class="controls">
+                <!-- Top Left: Sliders (2/3) -->
+                <div class="control-card thresholds">
+                    <label class="control-label">Thresholds</label>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div class="slider-container">
+                            <label style="font-size: 0.8125rem; color: var(--text-secondary); min-width: 200px; font-weight: 500;">Min Completeness</label>
+                            <input type="range" id="completenessSliderAcc" min="0.62" max="1" value="0.62" step="0.01">
+                            <span class="slider-value">0.62</span>
+                        </div>
+                        <div class="slider-container">
+                            <label style="font-size: 0.8125rem; color: var(--text-secondary); min-width: 200px; font-weight: 500;">Max Worst Case Yard Error</label>
+                            <input type="range" id="worstCaseYardErrorSliderAcc" min="0.35" max="12.7" value="12.7" step="0.1">
+                            <span class="slider-value">12.7</span>
+                        </div>
+                        <div class="slider-container">
+                            <label style="font-size: 0.8125rem; color: var(--text-secondary); min-width: 200px; font-weight: 500;">Max Avg Yard Error</label>
+                            <input type="range" id="avgYardErrorSliderAcc" min="0.19" max="1.9" value="1.9" step="0.01">
+                            <span class="slider-value">1.90</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Right: Metrics (1/3) -->
+                <div class="control-card metrics-container metrics-top">
+                    <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 0.625rem 0.75rem; flex: 1;">
+                        <div class="stat-value" id="avgCvAcc" style="font-size: 1.5rem; margin-bottom: 0.25rem;">—</div>
+                        <div class="stat-label">CV vs NGS (XY API)</div>
+                    </div>
+                    <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 0.625rem 0.75rem; flex: 1;">
+                        <div class="stat-value" id="avgBatchAcc" style="font-size: 1.5rem; margin-bottom: 0.25rem;">—</div>
+                        <div class="stat-label">XY vs Batch API (NGS)</div>
+                    </div>
+                </div>
+
+                <!-- Bottom Left: Filters (1/3) -->
+                <div class="control-card filters">
+                    <label class="control-label">Filters</label>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-top: 0.5rem;">
+                        <div class="status-filter-btn ga active" data-status="GA" data-tab="accuracy">GA</div>
+                        <div class="status-filter-btn preview active" data-status="PREVIEW" data-tab="accuracy">PREV</div>
+                        <div class="status-filter-btn beta active" data-status="BETA" data-tab="accuracy">BETA</div>
+                        <div class="status-filter-btn development" data-status="DEVELOPMENT" data-tab="accuracy">DEV</div>
+                        <div style="width: 1px; height: 20px; background: var(--border); margin: 0 0.25rem;"></div>
+                        <div class="status-filter-btn categorical active" data-type="categorical" data-tab="accuracy">CAT</div>
+                        <div class="status-filter-btn boolean active" data-type="boolean" data-tab="accuracy">BOOL</div>
+                        <div class="status-filter-btn continuous active" data-type="continuous" data-tab="accuracy">CONT</div>
+                    </div>
+                </div>
+
+                <!-- Bottom Middle: Legend (1/3) -->
+                <div class="control-card legend-box">
+                    <label class="control-label">Comparisons</label>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
+                        <div style="display: flex; align-items: center; gap: 0.625rem;">
+                            <div style="width: 24px; height: 8px; background: var(--electric-blue-dim); border-radius: 2px; flex-shrink: 0;"></div>
+                            <span style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4; white-space: nowrap;">CV Data vs NGS Data (Both XY API)</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.625rem;">
+                            <div style="width: 24px; height: 8px; background: var(--text-tertiary); border-radius: 2px; flex-shrink: 0;"></div>
+                            <span style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4; white-space: nowrap;">XY API vs Batch API (Both NGS Data)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Right: Attribute Counts (1/3) -->
+                <div class="control-card metrics-bottom" style="padding: 0.5rem;">
+                    <label class="control-label" style="margin-bottom: 0.5rem;">Attributes</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 0.5rem 0.75rem; flex: 1; display: flex; align-items: center; justify-content: space-between;">
+                            <div class="stat-label" style="margin: 0;">Play Attrs</div>
+                            <div class="stat-value" id="playCountAcc" style="font-size: 1.125rem; margin: 0;">—</div>
+                        </div>
+                        <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 0.5rem 0.75rem; flex: 1; display: flex; align-items: center; justify-content: space-between;">
+                            <div class="stat-label" style="margin: 0;">Player Attrs</div>
+                            <div class="stat-value" id="playerPlayCountAcc" style="font-size: 1.125rem; margin: 0;">—</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-wrapper">
+                <div class="charts-column">
+                    <div class="column-header">
+                        Play Attributes
+                        <span style="float: right; color: var(--electric-blue-dim); font-family: 'JetBrains Mono', monospace;"><span id="filteredPlaysAcc">—</span> Plays</span>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-scroll">
+                            <div id="playChartsAcc" class="bar-chart"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="charts-column">
+                    <div class="column-header">
+                        Player Play Attributes
+                        <span style="float: right; color: var(--electric-blue-dim); font-family: 'JetBrains Mono', monospace;"><span id="filteredPlayerPlaysAcc">—</span> Players</span>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-scroll">
+                            <div id="playerPlayChartsAcc" class="bar-chart"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                </div>
+                <!-- End Tab 2 -->
+
+            </div>
+            <!-- End tabs-container -->
         </div>
     </div>
 
@@ -682,17 +933,31 @@
 
         let ws = null;
         let currentFilters = {
-            minInstances: 10,
-            minCompleteness: 0,
-            maxWorstCaseYardError: 10,
-            maxAvgYardError: 10,
-            allowedStatuses: ['GA', 'PREVIEW', 'BETA']  // Default: exclude DEVELOPMENT
+            minCompleteness: 0.62,
+            maxWorstCaseYardError: 12.7,
+            maxAvgYardError: 1.9,
+            allowedStatuses: ['GA', 'PREVIEW', 'BETA'],  // Default: exclude DEVELOPMENT
+            allowedTypes: ['categorical', 'boolean', 'continuous']  // Default: all types
         };
 
         let playMetrics = [];
         let playerPlayMetrics = [];
         let playFilteredCount = 0;
         let playerPlayFilteredCount = 0;
+
+        // Accuracy tab state
+        let currentFiltersAcc = {
+            minCompleteness: 0.62,
+            maxWorstCaseYardError: 12.7,
+            maxAvgYardError: 1.9,
+            allowedStatuses: ['GA', 'PREVIEW', 'BETA'],
+            allowedTypes: ['categorical', 'boolean', 'continuous']
+        };
+
+        let playMetricsAcc = [];
+        let playerPlayMetricsAcc = [];
+        let playFilteredCountAcc = 0;
+        let playerPlayFilteredCountAcc = 0;
 
         // WebSocket connection
         function connect() {
@@ -707,9 +972,11 @@
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('mainContent').style.display = 'block';
 
-                // Request initial data
-                requestMetrics('play');
-                requestMetrics('player_play');
+                // Request initial data for both tabs
+                requestMetrics('play', 'skill-score');
+                requestMetrics('player_play', 'skill-score');
+                requestMetrics('play', 'accuracy');
+                requestMetrics('player_play', 'accuracy');
             };
 
             ws.onmessage = function(event) {
@@ -743,27 +1010,40 @@
             };
         }
 
-        function requestMetrics(entity) {
+        function requestMetrics(entity, tab = 'skill-score') {
             if (ws && ws.readyState === WebSocket.OPEN) {
+                const filters = tab === 'accuracy' ? currentFiltersAcc : currentFilters;
                 ws.send(JSON.stringify({
                     action: 'compute',
                     entity: entity,
-                    filters: currentFilters
+                    filters: filters,
+                    tab: tab
                 }));
             }
         }
 
         function handleMetricsResponse(data) {
-            if (data.entity === 'play') {
-                playMetrics = data.metrics;
-                playFilteredCount = data.filtered_records;
-            } else {
-                playerPlayMetrics = data.metrics;
-                playerPlayFilteredCount = data.filtered_records;
-            }
+            const tab = data.tab || 'skill-score';
 
-            // Update UI
-            renderCharts();
+            if (tab === 'accuracy') {
+                if (data.entity === 'play') {
+                    playMetricsAcc = data.metrics;
+                    playFilteredCountAcc = data.filtered_records;
+                } else {
+                    playerPlayMetricsAcc = data.metrics;
+                    playerPlayFilteredCountAcc = data.filtered_records;
+                }
+                renderChartsAcc();
+            } else {
+                if (data.entity === 'play') {
+                    playMetrics = data.metrics;
+                    playFilteredCount = data.filtered_records;
+                } else {
+                    playerPlayMetrics = data.metrics;
+                    playerPlayFilteredCount = data.filtered_records;
+                }
+                renderCharts();
+            }
         }
 
         function renderCharts() {
@@ -778,8 +1058,8 @@
             let countCv = 0, countBatch = 0;
 
             function renderMetric(metric, container) {
-                // Skip if below min instances
-                if (metric.n_instances < currentFilters.minInstances) return;
+                // Skip if type not in allowed types
+                if (!currentFilters.allowedTypes.includes(metric.type)) return;
 
                 // Calculate averages
                 if (metric.cv_xy_score !== null && !isNaN(metric.cv_xy_score)) {
@@ -862,18 +1142,103 @@
             document.getElementById('filteredPlayerPlays').textContent = playerPlayFilteredCount.toLocaleString();
         }
 
+        function renderChartsAcc() {
+            const playContainer = document.getElementById('playChartsAcc');
+            const playerPlayContainer = document.getElementById('playerPlayChartsAcc');
+
+            playContainer.innerHTML = '';
+            playerPlayContainer.innerHTML = '';
+
+            let playCount = 0, playerPlayCount = 0;
+            let sumCv = 0, sumBatch = 0;
+            let countCv = 0, countBatch = 0;
+
+            function renderMetric(metric, container) {
+                // Skip if type not in allowed types
+                if (!currentFiltersAcc.allowedTypes.includes(metric.type)) return;
+
+                // Calculate averages
+                if (metric.cv_xy_score !== null && !isNaN(metric.cv_xy_score)) {
+                    sumCv += metric.cv_xy_score;
+                    countCv++;
+                }
+                if (metric.batch_xy_score !== null && !isNaN(metric.batch_xy_score)) {
+                    sumBatch += metric.batch_xy_score;
+                    countBatch++;
+                }
+
+                // Format scores (already 0-1, convert to %)
+                const cvValue = (metric.cv_xy_score !== null && !isNaN(metric.cv_xy_score))
+                    ? (metric.cv_xy_score * 100).toFixed(1)
+                    : 'N/A';
+                const batchValue = (metric.batch_xy_score !== null && !isNaN(metric.batch_xy_score))
+                    ? (metric.batch_xy_score * 100).toFixed(1)
+                    : 'N/A';
+
+                // Height for bars (clamp between 5-100)
+                const cvHeight = (metric.cv_xy_score !== null && !isNaN(metric.cv_xy_score))
+                    ? Math.max(5, Math.min(100, metric.cv_xy_score * 100))
+                    : 0;
+                const batchHeight = (metric.batch_xy_score !== null && !isNaN(metric.batch_xy_score))
+                    ? Math.max(5, Math.min(100, metric.batch_xy_score * 100))
+                    : 0;
+
+                const barGroup = document.createElement('div');
+                barGroup.className = 'bar-group';
+
+                const typeAbbrev = metric.type === 'boolean' ? 'BOOL' :
+                                  metric.type === 'categorical' ? 'CAT' : 'CONT';
+
+                const status = metric.status || 'UNKNOWN';
+                const statusClass = `status-${status.toLowerCase()}`;
+
+                barGroup.innerHTML = `
+                    <div class="attribute-info">
+                        <div class="attribute-label" title="${metric.attribute}">${metric.attribute}</div>
+                        <span class="status-badge ${statusClass}">${status}</span>
+                        <span class="meta-badge">${typeAbbrev}</span>
+                        <span class="meta-badge count">${metric.n_instances}</span>
+                    </div>
+                    <div class="bars-wrapper">
+                        <div class="bar-item">
+                            <div class="bar bar-cv" style="height: ${cvHeight}%;">
+                                <div class="bar-value">${cvValue}%</div>
+                            </div>
+                        </div>
+                        <div class="bar-item">
+                            <div class="bar bar-batch" style="height: ${batchHeight}%;">
+                                <div class="bar-value">${batchValue}%</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(barGroup);
+
+                if (container === playContainer) {
+                    playCount++;
+                } else {
+                    playerPlayCount++;
+                }
+            }
+
+            playMetricsAcc.forEach(metric => renderMetric(metric, playContainer));
+            playerPlayMetricsAcc.forEach(metric => renderMetric(metric, playerPlayContainer));
+
+            // Update stats
+            document.getElementById('avgCvAcc').textContent = countCv > 0
+                ? ((sumCv / countCv) * 100).toFixed(1) + '%'
+                : '—';
+            document.getElementById('avgBatchAcc').textContent = countBatch > 0
+                ? ((sumBatch / countBatch) * 100).toFixed(1) + '%'
+                : '—';
+            document.getElementById('playCountAcc').textContent = playCount;
+            document.getElementById('playerPlayCountAcc').textContent = playerPlayCount;
+            document.getElementById('filteredPlaysAcc').textContent = playFilteredCountAcc.toLocaleString();
+            document.getElementById('filteredPlayerPlaysAcc').textContent = playerPlayFilteredCountAcc.toLocaleString();
+        }
+
         // Slider controls
-        // Update display value in real-time
-        document.getElementById('instancesSlider').addEventListener('input', function(e) {
-            e.target.nextElementSibling.textContent = e.target.value;
-        });
-
-        // Update filters and re-render only when slider is released
-        document.getElementById('instancesSlider').addEventListener('change', function(e) {
-            currentFilters.minInstances = parseInt(e.target.value);
-            renderCharts(); // Just re-render, no need to fetch
-        });
-
         // Update display value in real-time
         document.getElementById('completenessSlider').addEventListener('input', function(e) {
             e.target.nextElementSibling.textContent = parseFloat(e.target.value).toFixed(2);
@@ -906,7 +1271,7 @@
         // Avg yard error slider
         // Update display value in real-time
         document.getElementById('avgYardErrorSlider').addEventListener('input', function(e) {
-            e.target.nextElementSibling.textContent = parseFloat(e.target.value).toFixed(1);
+            e.target.nextElementSibling.textContent = parseFloat(e.target.value).toFixed(2);
         });
 
         // Re-fetch data only when slider is released
@@ -918,26 +1283,92 @@
             requestMetrics('player_play');
         });
 
-        // Status filter buttons
+        // Accuracy tab slider controls
+        document.getElementById('completenessSliderAcc').addEventListener('input', function(e) {
+            e.target.nextElementSibling.textContent = parseFloat(e.target.value).toFixed(2);
+        });
+
+        document.getElementById('completenessSliderAcc').addEventListener('change', function(e) {
+            currentFiltersAcc.minCompleteness = parseFloat(e.target.value);
+            requestMetrics('play', 'accuracy');
+            requestMetrics('player_play', 'accuracy');
+        });
+
+        document.getElementById('worstCaseYardErrorSliderAcc').addEventListener('input', function(e) {
+            e.target.nextElementSibling.textContent = parseFloat(e.target.value).toFixed(1);
+        });
+
+        document.getElementById('worstCaseYardErrorSliderAcc').addEventListener('change', function(e) {
+            currentFiltersAcc.maxWorstCaseYardError = parseFloat(e.target.value);
+            requestMetrics('play', 'accuracy');
+            requestMetrics('player_play', 'accuracy');
+        });
+
+        document.getElementById('avgYardErrorSliderAcc').addEventListener('input', function(e) {
+            e.target.nextElementSibling.textContent = parseFloat(e.target.value).toFixed(2);
+        });
+
+        document.getElementById('avgYardErrorSliderAcc').addEventListener('change', function(e) {
+            currentFiltersAcc.maxAvgYardError = parseFloat(e.target.value);
+            requestMetrics('play', 'accuracy');
+            requestMetrics('player_play', 'accuracy');
+        });
+
+        // Status and Type filter buttons
         document.querySelectorAll('.status-filter-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const status = this.getAttribute('data-status');
+                const type = this.getAttribute('data-type');
+                const tab = this.getAttribute('data-tab') || 'skill-score';
 
                 // Toggle active state
                 this.classList.toggle('active');
 
-                // Update allowed statuses
-                if (this.classList.contains('active')) {
-                    if (!currentFilters.allowedStatuses.includes(status)) {
-                        currentFilters.allowedStatuses.push(status);
-                    }
-                } else {
-                    currentFilters.allowedStatuses = currentFilters.allowedStatuses.filter(s => s !== status);
-                }
+                // Select appropriate filters and functions based on tab
+                const filters = tab === 'accuracy' ? currentFiltersAcc : currentFilters;
+                const renderFunc = tab === 'accuracy' ? renderChartsAcc : renderCharts;
 
-                // Re-fetch data from server with new filter
-                requestMetrics('play');
-                requestMetrics('player_play');
+                if (status) {
+                    // Handle status filter
+                    if (this.classList.contains('active')) {
+                        if (!filters.allowedStatuses.includes(status)) {
+                            filters.allowedStatuses.push(status);
+                        }
+                    } else {
+                        filters.allowedStatuses = filters.allowedStatuses.filter(s => s !== status);
+                    }
+
+                    // Re-fetch data from server with new filter
+                    requestMetrics('play', tab);
+                    requestMetrics('player_play', tab);
+                } else if (type) {
+                    // Handle type filter (client-side only)
+                    if (this.classList.contains('active')) {
+                        if (!filters.allowedTypes.includes(type)) {
+                            filters.allowedTypes.push(type);
+                        }
+                    } else {
+                        filters.allowedTypes = filters.allowedTypes.filter(t => t !== type);
+                    }
+
+                    // Just re-render, no need to fetch
+                    renderFunc();
+                }
+            });
+        });
+
+        // Tab switching
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', function() {
+                const targetTab = this.getAttribute('data-tab');
+
+                // Remove active class from all buttons and tabs
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+                // Add active class to clicked button and corresponding tab
+                this.classList.add('active');
+                document.getElementById(targetTab + '-tab').classList.add('active');
             });
         });
 
