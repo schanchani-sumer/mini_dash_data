@@ -247,6 +247,9 @@ def compute_metrics(records: List[PlayRecord], allowed_statuses: Optional[List[s
     This function is transport-agnostic and can be called from HTTP, WebSocket, etc.
     Uses batch predictions to determine applicability for all records.
 
+    For continuous attributes: Uses R² score
+    For categorical/boolean: Uses TRUE Brier Skill Score with probability distributions
+
     Args:
         records: List of play/player_play records
         allowed_statuses: List of allowed status values (e.g., ['GA', 'PREVIEW', 'BETA'])
@@ -254,9 +257,9 @@ def compute_metrics(records: List[PlayRecord], allowed_statuses: Optional[List[s
 
     Returns:
         List of attribute metrics with cv_xy_score, batch_xy_score, cv_batch_score, and status
-        - cv_xy_score: CV Data vs NGS Data (both using XY API)
-        - batch_xy_score: NGS Data XY API vs Batch API
-        - cv_batch_score: CV Data XY API vs NGS Data Batch API
+        - cv_xy_score: CV Data vs NGS Data (both using XY API) - uses CV probabilities
+        - batch_xy_score: NGS Data XY API vs Batch API - uses Batch probabilities
+        - cv_batch_score: CV Data XY API vs NGS Data Batch API - uses CV probabilities
     """
     if not records:
         return []
@@ -298,7 +301,10 @@ def compute_metrics(records: List[PlayRecord], allowed_statuses: Optional[List[s
                     attributes_data[attr] = {
                         "gt": [],
                         "cv": [],
-                        "batch": []
+                        "batch": [],
+                        "gt_probs": [],
+                        "cv_probs": [],
+                        "batch_probs": []
                     }
 
                 # Collect gt, cv, and batch values
@@ -306,11 +312,19 @@ def compute_metrics(records: List[PlayRecord], allowed_statuses: Optional[List[s
                 cv_val = record.data.get(f"cv_{attr}")
                 batch_val = record.data.get(f"batch_{attr}")
 
+                # Collect probability distributions (if available)
+                gt_probs = record.data.get(f"gt_{attr}_probs")
+                cv_probs = record.data.get(f"cv_{attr}_probs")
+                batch_probs = record.data.get(f"batch_{attr}_probs")
+
                 # Only include if all three are non-null
                 if gt_val is not None and cv_val is not None and batch_val is not None:
                     attributes_data[attr]["gt"].append(gt_val)
                     attributes_data[attr]["cv"].append(cv_val)
                     attributes_data[attr]["batch"].append(batch_val)
+                    attributes_data[attr]["gt_probs"].append(gt_probs)
+                    attributes_data[attr]["cv_probs"].append(cv_probs)
+                    attributes_data[attr]["batch_probs"].append(batch_probs)
 
     # Compute metrics for each attribute
     results = []
@@ -329,6 +343,9 @@ def compute_metrics(records: List[PlayRecord], allowed_statuses: Optional[List[s
         gt_vals = data["gt"]
         cv_vals = data["cv"]
         batch_vals = data["batch"]
+        gt_probs = data["gt_probs"]
+        cv_probs = data["cv_probs"]
+        batch_probs = data["batch_probs"]
 
         # Get attribute type from metadata, fallback to auto-detection
         attr_type = attr_metadata.get('target_type')
@@ -342,14 +359,28 @@ def compute_metrics(records: List[PlayRecord], allowed_statuses: Optional[List[s
             cv_batch_score = calculate_r2(batch_vals, cv_vals)  # CV XY vs NGS Batch
             metric_name = "r2"
         else:
-            # Boolean or categorical - use BSS
+            # Boolean or categorical - use BSS with probabilities
             is_binary = attr_type == "boolean"
             baseline_freq = compute_baseline_frequencies(gt_vals, attr_type)
-            cv_score = calculate_brier_skill_score(gt_vals, cv_vals, is_binary, baseline_freq)
-            batch_score = calculate_brier_skill_score(gt_vals, batch_vals, is_binary, baseline_freq)
-            # For cv_batch_score, we need baseline from batch_vals since that's the "ground truth" in this comparison
+
+            # CV vs GT: use CV probabilities
+            cv_score = calculate_brier_skill_score(
+                gt_vals, cv_vals, is_binary, baseline_freq,
+                y_pred_probs=cv_probs if any(p is not None for p in cv_probs) else None
+            )
+
+            # Batch vs GT: use Batch probabilities (now available!)
+            batch_score = calculate_brier_skill_score(
+                gt_vals, batch_vals, is_binary, baseline_freq,
+                y_pred_probs=batch_probs if any(p is not None for p in batch_probs) else None
+            )
+
+            # CV vs Batch: use CV probabilities (batch is "ground truth" in this comparison)
             baseline_freq_batch = compute_baseline_frequencies(batch_vals, attr_type)
-            cv_batch_score = calculate_brier_skill_score(batch_vals, cv_vals, is_binary, baseline_freq_batch)
+            cv_batch_score = calculate_brier_skill_score(
+                batch_vals, cv_vals, is_binary, baseline_freq_batch,
+                y_pred_probs=cv_probs if any(p is not None for p in cv_probs) else None
+            )
             metric_name = "bss"
 
         # Debug logging for missing metadata

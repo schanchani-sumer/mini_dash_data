@@ -25,6 +25,7 @@ _cache_lock = Lock()
 
 def load_csv_from_disk(csv_path: str) -> List[Dict[str, Any]]:
     """Load CSV from disk and convert to records"""
+    import ast
     records = []
 
     with open(csv_path, 'r') as f:
@@ -35,6 +36,12 @@ def load_csv_from_disk(csv_path: str) -> List[Dict[str, Any]]:
             for key, value in row.items():
                 if value == '':
                     data[key] = None
+                elif key.endswith('_probs'):
+                    # Parse probability dictionaries
+                    try:
+                        data[key] = ast.literal_eval(value)
+                    except (ValueError, SyntaxError):
+                        data[key] = None
                 elif value.lower() == 'true':
                     data[key] = True
                 elif value.lower() == 'false':

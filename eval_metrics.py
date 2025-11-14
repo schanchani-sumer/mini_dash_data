@@ -27,6 +27,7 @@ def calculate_brier_skill_score(
     y_pred: List,
     is_binary: bool,
     baseline_freq: Optional[float | Dict[str, float]] = None,
+    y_pred_probs: Optional[List[Dict]] = None,
 ) -> float:
     """
     Calculate Brier Skill Score using torch-based implementation.
@@ -36,9 +37,12 @@ def calculate_brier_skill_score(
 
     Args:
         y_true: Ground truth labels
-        y_pred: Predicted labels
+        y_pred: Predicted labels (used only if y_pred_probs is None)
         is_binary: Whether this is a binary classification
         baseline_freq: Baseline frequency (currently unused, kept for API compatibility)
+        y_pred_probs: Optional probability distributions (dict for each prediction)
+                     For binary: {'true': 0.7, 'false': 0.3}
+                     For categorical: {'class1': 0.5, 'class2': 0.3, 'class3': 0.2}
 
     Returns:
         Brier Skill Score
@@ -54,9 +58,19 @@ def calculate_brier_skill_score(
         bss_metric = BrierSkillScore(num_classes=num_classes)
 
         if is_binary:
-            # Convert to torch tensors
-            preds = torch.tensor([1.0 if val else 0.0 for val in y_pred], dtype=torch.float32)
+            # Convert targets to torch tensors
             targets = torch.tensor([1 if val else 0 for val in y_true], dtype=torch.long)
+
+            # Use probabilities if available, otherwise fall back to hard predictions
+            if y_pred_probs is not None:
+                # Extract probability of positive class (True)
+                preds = torch.tensor([
+                    float(prob_dict.get('true', prob_dict.get(True, 1.0 if pred else 0.0)))
+                    for prob_dict, pred in zip(y_pred_probs, y_pred)
+                ], dtype=torch.float32)
+            else:
+                # Fall back to hard predictions (0 or 1)
+                preds = torch.tensor([1.0 if val else 0.0 for val in y_pred], dtype=torch.float32)
         else:
             # For categorical, encode labels to integers
             # Convert all to strings to handle mixed types (e.g., 1, 2, 3, "4+")
@@ -66,11 +80,22 @@ def calculate_brier_skill_score(
             label_to_idx = {label: idx for idx, label in enumerate(unique_labels)}
 
             targets = torch.tensor([label_to_idx[val] for val in y_true_str], dtype=torch.long)
-            # For predictions, use one-hot encoding (hard predictions)
-            preds = torch.zeros((len(y_pred_str), num_classes), dtype=torch.float32)
-            for i, val in enumerate(y_pred_str):
-                if val in label_to_idx:
-                    preds[i, label_to_idx[val]] = 1.0
+
+            # Use probabilities if available, otherwise fall back to hard predictions
+            if y_pred_probs is not None:
+                # Build probability matrix from probability dictionaries
+                preds = torch.zeros((len(y_pred_str), num_classes), dtype=torch.float32)
+                for i, prob_dict in enumerate(y_pred_probs):
+                    for label, prob in prob_dict.items():
+                        label_str = str(label)
+                        if label_str in label_to_idx:
+                            preds[i, label_to_idx[label_str]] = float(prob)
+            else:
+                # Fall back to one-hot encoding (hard predictions)
+                preds = torch.zeros((len(y_pred_str), num_classes), dtype=torch.float32)
+                for i, val in enumerate(y_pred_str):
+                    if val in label_to_idx:
+                        preds[i, label_to_idx[val]] = 1.0
 
         # Update and compute
         bss_metric.update(preds, targets)
@@ -79,6 +104,9 @@ def calculate_brier_skill_score(
         return float(bss_value.item())
     except Exception as e:
         # For debugging, you might want to log the exception
+        print(f"Error calculating BSS: {e}")
+        import traceback
+        traceback.print_exc()
         return np.nan
 
 
