@@ -230,8 +230,11 @@ async def websocket_dashboard(websocket: WebSocket):
                 # Convert to PlayRecord objects
                 record_objects = [PlayRecord(**record) for record in filtered_records]
 
-                # Compute metrics
-                metrics = compute_metrics(record_objects)
+                # Extract allowed statuses from filters
+                allowed_statuses = filters.get('allowedStatuses')
+
+                # Compute metrics with status filtering
+                metrics = compute_metrics(record_objects, allowed_statuses=allowed_statuses)
 
                 # Send response
                 response = {

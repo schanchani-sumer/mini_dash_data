@@ -85,7 +85,7 @@ app.include_router(ws_router, tags=["WebSocket"])
 # ============================================================================
 
 
-def compute_metrics(records: List[PlayRecord]) -> List[Dict[str, Any]]:
+def compute_metrics(records: List[PlayRecord], allowed_statuses: Optional[List[str]] = None) -> List[Dict[str, Any]]:
     """
     Pure function to compute metrics from records.
 
@@ -94,6 +94,8 @@ def compute_metrics(records: List[PlayRecord]) -> List[Dict[str, Any]]:
 
     Args:
         records: List of play/player_play records
+        allowed_statuses: List of allowed status values (e.g., ['GA', 'PREVIEW', 'BETA'])
+                         If None, all statuses are allowed
 
     Returns:
         List of attribute metrics with cv_xy_score, batch_xy_score, and status
@@ -159,6 +161,13 @@ def compute_metrics(records: List[PlayRecord]) -> List[Dict[str, Any]]:
         if len(data["gt"]) == 0:
             continue
 
+        # Check if attribute status is allowed
+        attr_metadata = metadata.get(attr, {})
+        status = attr_metadata.get('status', 'UNKNOWN')
+
+        if allowed_statuses is not None and status not in allowed_statuses:
+            continue  # Skip this attribute if status not in allowed list
+
         gt_vals = data["gt"]
         cv_vals = data["cv"]
         batch_vals = data["batch"]
@@ -179,9 +188,9 @@ def compute_metrics(records: List[PlayRecord]) -> List[Dict[str, Any]]:
             batch_score = calculate_brier_skill_score(gt_vals, batch_vals, is_binary, baseline_freq)
             metric_name = "bss"
 
-        # Get status from metadata
-        attr_metadata = metadata.get(attr, {})
-        status = attr_metadata.get('status', 'UNKNOWN')
+        # Debug logging for missing metadata
+        if status == 'UNKNOWN':
+            print(f"Warning: No metadata found for attribute '{attr}'")
 
         results.append({
             "attribute": attr,
