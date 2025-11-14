@@ -172,9 +172,13 @@ def compute_accuracy(records: List[PlayRecord], allowed_statuses: Optional[List[
         attr_type = attr_metadata.get('target_type', 'UNKNOWN')
 
         # Compute accuracy (agreement rate) for each model vs labels
-        gt_accuracy = calculate_agreement(label_vals, gt_vals)
-        cv_accuracy = calculate_agreement(label_vals, cv_vals)
-        batch_accuracy = calculate_agreement(label_vals, batch_vals)
+        # For continuous variables, use 10% tolerance; for categorical/boolean use exact match
+        # For yard-based metrics, use 1 yard absolute tolerance
+        is_continuous = (attr_type.lower() == 'continuous')
+
+        gt_accuracy = calculate_agreement(label_vals, gt_vals, is_continuous=is_continuous, attribute_name=attr)
+        cv_accuracy = calculate_agreement(label_vals, cv_vals, is_continuous=is_continuous, attribute_name=attr)
+        batch_accuracy = calculate_agreement(label_vals, batch_vals, is_continuous=is_continuous, attribute_name=attr)
 
         # Debug logging for missing metadata
         if status == 'UNKNOWN':
@@ -193,27 +197,57 @@ def compute_accuracy(records: List[PlayRecord], allowed_statuses: Optional[List[
     return results
 
 
-def calculate_agreement(labels: List[Any], predictions: List[Any]) -> float:
+def calculate_agreement(labels: List[Any], predictions: List[Any], is_continuous: bool = False, attribute_name: str = "") -> float:
     """
     Calculate agreement rate between labels and predictions.
+
+    For yard-based metrics: checks if prediction is within 1 yard absolute tolerance
+    For other continuous variables: checks if prediction is within 10% of label
+    For categorical/boolean: checks for exact match
 
     Args:
         labels: Ground truth labels
         predictions: Model predictions
+        is_continuous: Whether this is a continuous variable (uses 10% tolerance if True)
+        attribute_name: Name of the attribute (used to detect yard-based metrics)
 
     Returns:
         Agreement rate (proportion of matches)
     """
-    if len(labels) != len(predictions):
+    if len(labels) != len(predictions) or len(labels) == 0:
         return None
 
-    if len(labels) == 0:
-        return None
+    if is_continuous:
+        # Check if this is a yard-based metric
+        is_yard_metric = 'yard' in attribute_name.lower()
 
-    # Count matches
-    matches = sum(1 for label, pred in zip(labels, predictions) if label == pred)
+        matches = 0
+        for label, pred in zip(labels, predictions):
+            try:
+                label_val = float(label)
+                pred_val = float(pred)
 
-    return matches / len(labels)
+                if is_yard_metric:
+                    # For yard metrics, use absolute tolerance of 1 yard
+                    if abs(pred_val - label_val) <= 1.0:
+                        matches += 1
+                elif abs(label_val) < 1e-6:
+                    # If label is 0, require prediction to be very close (absolute tolerance)
+                    if abs(pred_val) < 0.1:  # Within 0.1 of zero
+                        matches += 1
+                else:
+                    # Check if within 10% relative tolerance
+                    if abs(pred_val - label_val) / abs(label_val) <= 0.10:
+                        matches += 1
+            except (ValueError, TypeError):
+                # Skip if can't convert to float
+                continue
+
+        return matches / len(labels)
+    else:
+        # Exact match for categorical/boolean
+        matches = sum(1 for label, pred in zip(labels, predictions) if label == pred)
+        return matches / len(labels)
 
 
 # ============================================================================
