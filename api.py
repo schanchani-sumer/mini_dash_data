@@ -253,7 +253,10 @@ def compute_metrics(records: List[PlayRecord], allowed_statuses: Optional[List[s
                          If None, all statuses are allowed
 
     Returns:
-        List of attribute metrics with cv_xy_score, batch_xy_score, and status
+        List of attribute metrics with cv_xy_score, batch_xy_score, cv_batch_score, and status
+        - cv_xy_score: CV Data vs NGS Data (both using XY API)
+        - batch_xy_score: NGS Data XY API vs Batch API
+        - cv_batch_score: CV Data XY API vs NGS Data Batch API
     """
     if not records:
         return []
@@ -336,6 +339,7 @@ def compute_metrics(records: List[PlayRecord], allowed_statuses: Optional[List[s
         if attr_type == "continuous":
             cv_score = calculate_r2(gt_vals, cv_vals)
             batch_score = calculate_r2(gt_vals, batch_vals)
+            cv_batch_score = calculate_r2(batch_vals, cv_vals)  # CV XY vs NGS Batch
             metric_name = "r2"
         else:
             # Boolean or categorical - use BSS
@@ -343,6 +347,9 @@ def compute_metrics(records: List[PlayRecord], allowed_statuses: Optional[List[s
             baseline_freq = compute_baseline_frequencies(gt_vals, attr_type)
             cv_score = calculate_brier_skill_score(gt_vals, cv_vals, is_binary, baseline_freq)
             batch_score = calculate_brier_skill_score(gt_vals, batch_vals, is_binary, baseline_freq)
+            # For cv_batch_score, we need baseline from batch_vals since that's the "ground truth" in this comparison
+            baseline_freq_batch = compute_baseline_frequencies(batch_vals, attr_type)
+            cv_batch_score = calculate_brier_skill_score(batch_vals, cv_vals, is_binary, baseline_freq_batch)
             metric_name = "bss"
 
         # Debug logging for missing metadata
@@ -356,6 +363,7 @@ def compute_metrics(records: List[PlayRecord], allowed_statuses: Optional[List[s
             "metric_name": metric_name,
             "cv_xy_score": round(cv_score, 4) if cv_score is not None and not np.isnan(cv_score) else None,
             "batch_xy_score": round(batch_score, 4) if batch_score is not None and not np.isnan(batch_score) else None,
+            "cv_batch_score": round(cv_batch_score, 4) if cv_batch_score is not None and not np.isnan(cv_batch_score) else None,
             "n_instances": len(gt_vals)
         })
 

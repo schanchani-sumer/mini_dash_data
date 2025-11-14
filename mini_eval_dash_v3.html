@@ -361,6 +361,10 @@
             background: var(--text-tertiary); /* Gray for skill score tab */
         }
 
+        .bar-cv-batch {
+            background: #ea580c; /* Orange for CV vs Batch comparison */
+        }
+
         /* Accuracy tab specific bar colors */
         .bar-batch-acc {
             background: #6b7280; /* Gray for Batch */
@@ -755,13 +759,17 @@
 
                 <!-- Top Right: Metrics (1/3) -->
                 <div class="control-card metrics-container metrics-top">
-                    <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 0.625rem 0.75rem; flex: 1;">
-                        <div class="stat-value" id="avgCv" style="font-size: 1.5rem; margin-bottom: 0.25rem;">—</div>
-                        <div class="stat-label">CV vs NGS (XY API)</div>
+                    <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 0.5rem 0.625rem; flex: 1;">
+                        <div class="stat-value" id="avgCv" style="font-size: 1.25rem; margin-bottom: 0.25rem;">—</div>
+                        <div class="stat-label" style="font-size: 0.6875rem;">CV vs NGS (XY)</div>
                     </div>
-                    <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 0.625rem 0.75rem; flex: 1;">
-                        <div class="stat-value" id="avgBatch" style="font-size: 1.5rem; margin-bottom: 0.25rem;">—</div>
-                        <div class="stat-label">XY vs Batch API (NGS)</div>
+                    <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 0.5rem 0.625rem; flex: 1;">
+                        <div class="stat-value" id="avgBatch" style="font-size: 1.25rem; margin-bottom: 0.25rem;">—</div>
+                        <div class="stat-label" style="font-size: 0.6875rem;">NGS XY vs Batch</div>
+                    </div>
+                    <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 0.5rem 0.625rem; flex: 1;">
+                        <div class="stat-value" id="avgCvBatch" style="font-size: 1.25rem; margin-bottom: 0.25rem;">—</div>
+                        <div class="stat-label" style="font-size: 0.6875rem;">CV XY vs NGS Batch</div>
                     </div>
                 </div>
 
@@ -784,12 +792,16 @@
                 <div class="control-card legend-box">
                     <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem;">
                         <div style="display: flex; align-items: center; gap: 0.625rem;">
-                            <div style="width: 24px; height: 8px; background: var(--electric-blue-dim); border-radius: 2px; flex-shrink: 0;"></div>
-                            <span style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4; white-space: nowrap;">CV Data vs NGS Data (Both XY API)</span>
+                            <div style="width: 20px; height: 8px; background: var(--electric-blue-dim); border-radius: 2px; flex-shrink: 0;"></div>
+                            <span style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.3; white-space: nowrap;">CV Data vs NGS Data (XY API)</span>
                         </div>
                         <div style="display: flex; align-items: center; gap: 0.625rem;">
-                            <div style="width: 24px; height: 8px; background: var(--text-tertiary); border-radius: 2px; flex-shrink: 0;"></div>
-                            <span style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4; white-space: nowrap;">XY API vs Batch API (Both NGS Data)</span>
+                            <div style="width: 20px; height: 8px; background: var(--text-tertiary); border-radius: 2px; flex-shrink: 0;"></div>
+                            <span style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.3; white-space: nowrap;">NGS Data XY vs Batch API</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.625rem;">
+                            <div style="width: 20px; height: 8px; background: #ea580c; border-radius: 2px; flex-shrink: 0;"></div>
+                            <span style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.3; white-space: nowrap;">CV Data XY vs NGS Batch API</span>
                         </div>
                     </div>
                 </div>
@@ -1085,8 +1097,8 @@
             playerPlayContainer.innerHTML = '';
 
             let playCount = 0, playerPlayCount = 0;
-            let sumCv = 0, sumBatch = 0;
-            let countCv = 0, countBatch = 0;
+            let sumCv = 0, sumBatch = 0, sumCvBatch = 0;
+            let countCv = 0, countBatch = 0, countCvBatch = 0;
 
             function renderMetric(metric, container) {
                 // Skip if type not in allowed types
@@ -1101,6 +1113,10 @@
                     sumBatch += metric.batch_xy_score;
                     countBatch++;
                 }
+                if (metric.cv_batch_score !== null && !isNaN(metric.cv_batch_score)) {
+                    sumCvBatch += metric.cv_batch_score;
+                    countCvBatch++;
+                }
 
                 // Format scores (already 0-1, convert to %)
                 const cvValue = (metric.cv_xy_score !== null && !isNaN(metric.cv_xy_score))
@@ -1109,6 +1125,9 @@
                 const batchValue = (metric.batch_xy_score !== null && !isNaN(metric.batch_xy_score))
                     ? (metric.batch_xy_score * 100).toFixed(1)
                     : 'N/A';
+                const cvBatchValue = (metric.cv_batch_score !== null && !isNaN(metric.cv_batch_score))
+                    ? (metric.cv_batch_score * 100).toFixed(1)
+                    : 'N/A';
 
                 // Height for bars (clamp between 5-100)
                 const cvHeight = (metric.cv_xy_score !== null && !isNaN(metric.cv_xy_score))
@@ -1116,6 +1135,9 @@
                     : 0;
                 const batchHeight = (metric.batch_xy_score !== null && !isNaN(metric.batch_xy_score))
                     ? Math.max(5, Math.min(100, metric.batch_xy_score * 100))
+                    : 0;
+                const cvBatchHeight = (metric.cv_batch_score !== null && !isNaN(metric.cv_batch_score))
+                    ? Math.max(5, Math.min(100, metric.cv_batch_score * 100))
                     : 0;
 
                 const barGroup = document.createElement('div');
@@ -1134,16 +1156,24 @@
                         <span class="meta-badge">${typeAbbrev}</span>
                         <span class="meta-badge count">${metric.n_instances}</span>
                     </div>
-                    <div class="bars-wrapper">
+                    <div class="bars-wrapper bars-wrapper-3">
                         <div class="bar-item">
                             <div class="bar bar-cv" style="height: ${cvHeight}%;">
                                 <div class="bar-value">${cvValue}%</div>
                             </div>
+                            <div class="bar-label">CV vs NGS (XY)</div>
                         </div>
                         <div class="bar-item">
                             <div class="bar bar-batch" style="height: ${batchHeight}%;">
                                 <div class="bar-value">${batchValue}%</div>
                             </div>
+                            <div class="bar-label">NGS XY vs BATCH</div>
+                        </div>
+                        <div class="bar-item">
+                            <div class="bar bar-cv-batch" style="height: ${cvBatchHeight}%;">
+                                <div class="bar-value">${cvBatchValue}%</div>
+                            </div>
+                            <div class="bar-label">CV XY vs NGS BATCH</div>
                         </div>
                     </div>
                 `;
@@ -1166,6 +1196,9 @@
                 : '—';
             document.getElementById('avgBatch').textContent = countBatch > 0
                 ? ((sumBatch / countBatch) * 100).toFixed(1) + '%'
+                : '—';
+            document.getElementById('avgCvBatch').textContent = countCvBatch > 0
+                ? ((sumCvBatch / countCvBatch) * 100).toFixed(1) + '%'
                 : '—';
             document.getElementById('playCount').textContent = playCount;
             document.getElementById('playerPlayCount').textContent = playerPlayCount;
