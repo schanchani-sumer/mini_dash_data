@@ -1,11 +1,12 @@
 """
-FastAPI server for computing evaluation metrics on play/player records.
+FastAPI server for computing accuracy (agreement) metrics comparing predictions to labels.
 
 Clean architecture with pluggable transport heads:
 - HTTP transport (REST API)
 - WebSocket transport (real-time streaming)
 
 Core computation logic is transport-agnostic.
+Compares three models (gt, cv, batch) against PFF labels.
 """
 
 import numpy as np
@@ -14,20 +15,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Any, Optional
 
-from eval_metrics import (
-    calculate_r2,
-    calculate_brier_skill_score,
-    compute_baseline_frequencies,
-    determine_attribute_type
-)
-from applicability import load_applicability_rules, is_applicable
-
 # Import transport heads
-from transport_heads.http import router as http_router, PlayRecord
-from transport_heads.websocket import router as ws_router
+from transport_heads.accuracy_http import router as http_router, PlayRecord
+from transport_heads.accuracy_websocket import router as ws_router
 
 # Load metadata once at startup
 _metadata_cache: Optional[Dict[str, Dict[str, str]]] = None
+
 
 def load_metadata() -> Dict[str, Dict[str, str]]:
     """Load metadata.csv and create lookup for attribute status and type"""
@@ -70,9 +64,9 @@ def load_metadata() -> Dict[str, Dict[str, str]]:
 # ============================================================================
 
 app = FastAPI(
-    title="Eval Metrics API",
+    title="Accuracy Metrics API",
     version="1.0.0",
-    description="Multi-transport API for computing evaluation metrics with HTTP and WebSocket support"
+    description="Multi-transport API for computing accuracy/agreement metrics with HTTP and WebSocket support"
 )
 
 # Enable CORS for client-side requests
@@ -96,9 +90,10 @@ app.include_router(ws_router, tags=["WebSocket"])
 
 def compute_accuracy(records: List[PlayRecord], allowed_statuses: Optional[List[str]] = None) -> List[Dict[str, Any]]:
     """
-    Compute accuracy metrics from records by comparing predictions to labels.
+    Pure function to compute accuracy metrics from records.
 
     Compares three models (gt, cv, batch) against PFF labels.
+    This function is transport-agnostic and can be called from HTTP, WebSocket, etc.
 
     Args:
         records: List of play/player_play records
@@ -115,11 +110,13 @@ def compute_accuracy(records: List[PlayRecord], allowed_statuses: Optional[List[
     metadata = load_metadata()
 
     # Reorganize data by attribute
+    # Each attribute has gt_, cv_, batch_, and label_ versions
     attributes_data = {}
 
     for record in records:
-        # Iterate through all data fields to find label fields
+        # Iterate through all data fields
         for key, value in record.data.items():
+            # Look for label fields (label_*)
             if key.startswith("label_") and not key.endswith("_probs"):
                 attr = key[6:]  # Remove "label_" prefix
 
@@ -164,7 +161,7 @@ def compute_accuracy(records: List[PlayRecord], allowed_statuses: Optional[List[
         status = attr_metadata.get('status', 'UNKNOWN')
 
         if allowed_statuses is not None and status not in allowed_statuses:
-            continue
+            continue  # Skip this attribute if status not in allowed list
 
         label_vals = data["label"]
         gt_vals = data["gt"]
@@ -175,9 +172,13 @@ def compute_accuracy(records: List[PlayRecord], allowed_statuses: Optional[List[
         attr_type = attr_metadata.get('target_type', 'UNKNOWN')
 
         # Compute accuracy (agreement rate) for each model vs labels
-        gt_accuracy = _calculate_agreement(label_vals, gt_vals)
-        cv_accuracy = _calculate_agreement(label_vals, cv_vals)
-        batch_accuracy = _calculate_agreement(label_vals, batch_vals)
+        gt_accuracy = calculate_agreement(label_vals, gt_vals)
+        cv_accuracy = calculate_agreement(label_vals, cv_vals)
+        batch_accuracy = calculate_agreement(label_vals, batch_vals)
+
+        # Debug logging for missing metadata
+        if status == 'UNKNOWN':
+            print(f"Warning: No metadata found for attribute '{attr}'")
 
         results.append({
             "attribute": attr,
@@ -192,135 +193,27 @@ def compute_accuracy(records: List[PlayRecord], allowed_statuses: Optional[List[
     return results
 
 
-def _calculate_agreement(labels: List[Any], predictions: List[Any]) -> float:
-    """Calculate agreement rate between labels and predictions."""
-    if len(labels) != len(predictions) or len(labels) == 0:
-        return None
-
-    matches = sum(1 for label, pred in zip(labels, predictions) if label == pred)
-    return matches / len(labels)
-
-
-def compute_metrics(records: List[PlayRecord], allowed_statuses: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+def calculate_agreement(labels: List[Any], predictions: List[Any]) -> float:
     """
-    Pure function to compute metrics from records.
-
-    This function is transport-agnostic and can be called from HTTP, WebSocket, etc.
-    Uses batch predictions to determine applicability for all records.
+    Calculate agreement rate between labels and predictions.
 
     Args:
-        records: List of play/player_play records
-        allowed_statuses: List of allowed status values (e.g., ['GA', 'PREVIEW', 'BETA'])
-                         If None, all statuses are allowed
+        labels: Ground truth labels
+        predictions: Model predictions
 
     Returns:
-        List of attribute metrics with cv_xy_score, batch_xy_score, and status
+        Agreement rate (proportion of matches)
     """
-    if not records:
-        return []
+    if len(labels) != len(predictions):
+        return None
 
-    # Load metadata for status lookup
-    metadata = load_metadata()
+    if len(labels) == 0:
+        return None
 
-    # Load applicability rules from metadata
-    try:
-        applicability_rules = load_applicability_rules()
-    except Exception as e:
-        # If metadata loading fails, proceed without applicability filtering
-        print(f"Warning: Could not load applicability rules: {e}")
-        applicability_rules = {}
+    # Count matches
+    matches = sum(1 for label, pred in zip(labels, predictions) if label == pred)
 
-    # Reorganize data by attribute
-    # Each attribute has gt_, cv_, and batch_ versions
-    attributes_data = {}
-
-    for record in records:
-        # Extract all batch predictions for applicability checking
-        batch_data = {}
-        for key, value in record.data.items():
-            if key.startswith("batch_") and not key.endswith("_probs"):
-                batch_data[key[6:]] = value  # Remove "batch_" prefix
-
-        # Iterate through all data fields
-        for key, value in record.data.items():
-            # Look for ground truth fields (gt_*)
-            if key.startswith("gt_") and not key.endswith("_probs"):
-                attr = key[3:]  # Remove "gt_" prefix
-
-                # Check if applicable based on batch predictions
-                if not is_applicable(attr, batch_data, applicability_rules):
-                    continue
-
-                # Initialize attribute if not seen before
-                if attr not in attributes_data:
-                    attributes_data[attr] = {
-                        "gt": [],
-                        "cv": [],
-                        "batch": []
-                    }
-
-                # Collect gt, cv, and batch values
-                gt_val = value
-                cv_val = record.data.get(f"cv_{attr}")
-                batch_val = record.data.get(f"batch_{attr}")
-
-                # Only include if all three are non-null
-                if gt_val is not None and cv_val is not None and batch_val is not None:
-                    attributes_data[attr]["gt"].append(gt_val)
-                    attributes_data[attr]["cv"].append(cv_val)
-                    attributes_data[attr]["batch"].append(batch_val)
-
-    # Compute metrics for each attribute
-    results = []
-
-    for attr, data in attributes_data.items():
-        if len(data["gt"]) == 0:
-            continue
-
-        # Check if attribute status is allowed
-        attr_metadata = metadata.get(attr, {})
-        status = attr_metadata.get('status', 'UNKNOWN')
-
-        if allowed_statuses is not None and status not in allowed_statuses:
-            continue  # Skip this attribute if status not in allowed list
-
-        gt_vals = data["gt"]
-        cv_vals = data["cv"]
-        batch_vals = data["batch"]
-
-        # Get attribute type from metadata, fallback to auto-detection
-        attr_type = attr_metadata.get('target_type')
-        if not attr_type:
-            attr_type = determine_attribute_type(attr, gt_vals[0], cv_vals[0])
-
-        # Compute metrics based on type
-        if attr_type == "continuous":
-            cv_score = calculate_r2(gt_vals, cv_vals)
-            batch_score = calculate_r2(gt_vals, batch_vals)
-            metric_name = "r2"
-        else:
-            # Boolean or categorical - use BSS
-            is_binary = attr_type == "boolean"
-            baseline_freq = compute_baseline_frequencies(gt_vals, attr_type)
-            cv_score = calculate_brier_skill_score(gt_vals, cv_vals, is_binary, baseline_freq)
-            batch_score = calculate_brier_skill_score(gt_vals, batch_vals, is_binary, baseline_freq)
-            metric_name = "bss"
-
-        # Debug logging for missing metadata
-        if status == 'UNKNOWN':
-            print(f"Warning: No metadata found for attribute '{attr}'")
-
-        results.append({
-            "attribute": attr,
-            "type": attr_type,
-            "status": status,
-            "metric_name": metric_name,
-            "cv_xy_score": round(cv_score, 4) if cv_score is not None and not np.isnan(cv_score) else None,
-            "batch_xy_score": round(batch_score, 4) if batch_score is not None and not np.isnan(batch_score) else None,
-            "n_instances": len(gt_vals)
-        })
-
-    return results
+    return matches / len(labels)
 
 
 # ============================================================================
@@ -329,4 +222,4 @@ def compute_metrics(records: List[PlayRecord], allowed_statuses: Optional[List[s
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host="0.0.0.0", port=8002)

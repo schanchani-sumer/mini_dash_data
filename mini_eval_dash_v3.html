@@ -353,12 +353,28 @@
             opacity: 0.8;
         }
 
+        .bar-gt {
+            background: #10b981; /* Green for GT tracking */
+        }
+
         .bar-cv {
             background: var(--electric-blue-dim);
         }
 
         .bar-batch {
             background: var(--text-tertiary);
+        }
+
+        /* 3-bar layout for accuracy tab */
+        .bars-wrapper-3 {
+            gap: 0.15rem;
+        }
+
+        .bar-label {
+            font-size: 0.625rem;
+            color: var(--text-tertiary);
+            margin-top: 0.125rem;
+            font-weight: 500;
         }
 
         .bar-value {
@@ -1150,37 +1166,47 @@
             playerPlayContainer.innerHTML = '';
 
             let playCount = 0, playerPlayCount = 0;
-            let sumCv = 0, sumBatch = 0;
-            let countCv = 0, countBatch = 0;
+            let sumGt = 0, sumCv = 0, sumBatch = 0;
+            let countGt = 0, countCv = 0, countBatch = 0;
 
             function renderMetric(metric, container) {
                 // Skip if type not in allowed types
                 if (!currentFiltersAcc.allowedTypes.includes(metric.type)) return;
 
-                // Calculate averages
-                if (metric.cv_xy_score !== null && !isNaN(metric.cv_xy_score)) {
-                    sumCv += metric.cv_xy_score;
+                // Calculate averages for all three models
+                if (metric.gt_accuracy !== null && !isNaN(metric.gt_accuracy)) {
+                    sumGt += metric.gt_accuracy;
+                    countGt++;
+                }
+                if (metric.cv_accuracy !== null && !isNaN(metric.cv_accuracy)) {
+                    sumCv += metric.cv_accuracy;
                     countCv++;
                 }
-                if (metric.batch_xy_score !== null && !isNaN(metric.batch_xy_score)) {
-                    sumBatch += metric.batch_xy_score;
+                if (metric.batch_accuracy !== null && !isNaN(metric.batch_accuracy)) {
+                    sumBatch += metric.batch_accuracy;
                     countBatch++;
                 }
 
                 // Format scores (already 0-1, convert to %)
-                const cvValue = (metric.cv_xy_score !== null && !isNaN(metric.cv_xy_score))
-                    ? (metric.cv_xy_score * 100).toFixed(1)
+                const gtValue = (metric.gt_accuracy !== null && !isNaN(metric.gt_accuracy))
+                    ? (metric.gt_accuracy * 100).toFixed(1)
                     : 'N/A';
-                const batchValue = (metric.batch_xy_score !== null && !isNaN(metric.batch_xy_score))
-                    ? (metric.batch_xy_score * 100).toFixed(1)
+                const cvValue = (metric.cv_accuracy !== null && !isNaN(metric.cv_accuracy))
+                    ? (metric.cv_accuracy * 100).toFixed(1)
+                    : 'N/A';
+                const batchValue = (metric.batch_accuracy !== null && !isNaN(metric.batch_accuracy))
+                    ? (metric.batch_accuracy * 100).toFixed(1)
                     : 'N/A';
 
                 // Height for bars (clamp between 5-100)
-                const cvHeight = (metric.cv_xy_score !== null && !isNaN(metric.cv_xy_score))
-                    ? Math.max(5, Math.min(100, metric.cv_xy_score * 100))
+                const gtHeight = (metric.gt_accuracy !== null && !isNaN(metric.gt_accuracy))
+                    ? Math.max(5, Math.min(100, metric.gt_accuracy * 100))
                     : 0;
-                const batchHeight = (metric.batch_xy_score !== null && !isNaN(metric.batch_xy_score))
-                    ? Math.max(5, Math.min(100, metric.batch_xy_score * 100))
+                const cvHeight = (metric.cv_accuracy !== null && !isNaN(metric.cv_accuracy))
+                    ? Math.max(5, Math.min(100, metric.cv_accuracy * 100))
+                    : 0;
+                const batchHeight = (metric.batch_accuracy !== null && !isNaN(metric.batch_accuracy))
+                    ? Math.max(5, Math.min(100, metric.batch_accuracy * 100))
                     : 0;
 
                 const barGroup = document.createElement('div');
@@ -1199,16 +1225,24 @@
                         <span class="meta-badge">${typeAbbrev}</span>
                         <span class="meta-badge count">${metric.n_instances}</span>
                     </div>
-                    <div class="bars-wrapper">
+                    <div class="bars-wrapper bars-wrapper-3">
+                        <div class="bar-item">
+                            <div class="bar bar-gt" style="height: ${gtHeight}%;">
+                                <div class="bar-value">${gtValue}%</div>
+                            </div>
+                            <div class="bar-label">GT</div>
+                        </div>
                         <div class="bar-item">
                             <div class="bar bar-cv" style="height: ${cvHeight}%;">
                                 <div class="bar-value">${cvValue}%</div>
                             </div>
+                            <div class="bar-label">CV</div>
                         </div>
                         <div class="bar-item">
                             <div class="bar bar-batch" style="height: ${batchHeight}%;">
                                 <div class="bar-value">${batchValue}%</div>
                             </div>
+                            <div class="bar-label">Batch</div>
                         </div>
                     </div>
                 `;
@@ -1225,7 +1259,7 @@
             playMetricsAcc.forEach(metric => renderMetric(metric, playContainer));
             playerPlayMetricsAcc.forEach(metric => renderMetric(metric, playerPlayContainer));
 
-            // Update stats
+            // Update stats - using GT and CV for top metrics
             document.getElementById('avgCvAcc').textContent = countCv > 0
                 ? ((sumCv / countCv) * 100).toFixed(1) + '%'
                 : '—';

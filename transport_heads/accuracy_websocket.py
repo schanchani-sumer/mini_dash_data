@@ -1,5 +1,5 @@
 """
-WebSocket transport head for Eval Metrics API.
+WebSocket transport head for Accuracy Metrics API.
 
 Provides real-time streaming computation via WebSocket connections.
 """
@@ -92,14 +92,14 @@ def apply_filters(records: List[Dict], filters: Dict[str, Any]) -> List[Dict]:
     return filtered
 
 
-@router.websocket("/ws/metrics")
-async def websocket_metrics(websocket: WebSocket):
+@router.websocket("/ws/accuracy")
+async def websocket_accuracy(websocket: WebSocket):
     """
-    WebSocket endpoint for real-time metrics computation.
+    WebSocket endpoint for real-time accuracy metrics computation.
 
     Client sends:
     {
-        "records": [...],  # OR
+        "records": [...],
         "entity": "play" or "player_play"
     }
 
@@ -119,14 +119,17 @@ async def websocket_metrics(websocket: WebSocket):
             data = await websocket.receive_json()
 
             # Import here to avoid circular dependency
-            from api import compute_metrics
-            from transport_heads.http import PlayRecord
+            from accuracy_api import compute_accuracy
+            from transport_heads.accuracy_http import PlayRecord
 
             # Parse records
             records = [PlayRecord(**record) for record in data.get('records', [])]
 
-            # Compute metrics (same function as HTTP!)
-            metrics = compute_metrics(records)
+            # Extract allowed statuses from request
+            allowed_statuses = data.get('allowed_statuses')
+
+            # Compute accuracy metrics (same function as HTTP!)
+            metrics = compute_accuracy(records, allowed_statuses=allowed_statuses)
 
             # Send response
             response = {
@@ -166,10 +169,10 @@ def get_cached_data():
     return _data_cache["play_records"], _data_cache["player_play_records"]
 
 
-@router.websocket("/ws/dashboard")
-async def websocket_dashboard(websocket: WebSocket):
+@router.websocket("/ws/accuracy-dashboard")
+async def websocket_accuracy_dashboard(websocket: WebSocket):
     """
-    Dashboard WebSocket endpoint - accepts filter criteria, returns metrics.
+    Accuracy Dashboard WebSocket endpoint - accepts filter criteria, returns accuracy metrics.
 
     Server loads CSV from disk (once, cached), applies filters, and computes metrics.
     Supports multiple concurrent connections efficiently.
@@ -181,6 +184,7 @@ async def websocket_dashboard(websocket: WebSocket):
         "filters": {
             "minCompleteness": 0.0-1.0,
             "minTrackedPlayers": int,
+            "allowedStatuses": ["GA", "PREVIEW", "BETA"],
             ... other filters
         }
     }
@@ -218,8 +222,8 @@ async def websocket_dashboard(websocket: WebSocket):
 
             if action == 'compute':
                 # Import here to avoid circular dependency
-                from api import compute_metrics, compute_accuracy
-                from transport_heads.http import PlayRecord
+                from accuracy_api import compute_accuracy
+                from transport_heads.accuracy_http import PlayRecord
 
                 # Select appropriate dataset
                 records = play_records if entity == 'play' else player_play_records
@@ -233,20 +237,13 @@ async def websocket_dashboard(websocket: WebSocket):
                 # Extract allowed statuses from filters
                 allowed_statuses = filters.get('allowedStatuses')
 
-                # Determine which metric type to compute based on tab parameter
-                tab = data.get('tab', 'skill-score')
-
-                # Compute metrics with status filtering
-                if tab == 'accuracy':
-                    metrics = compute_accuracy(record_objects, allowed_statuses=allowed_statuses)
-                else:
-                    metrics = compute_metrics(record_objects, allowed_statuses=allowed_statuses)
+                # Compute accuracy metrics with status filtering
+                metrics = compute_accuracy(record_objects, allowed_statuses=allowed_statuses)
 
                 # Send response
                 response = {
                     "action": "result",
                     "entity": entity,
-                    "tab": tab,
                     "total_records": len(records),
                     "filtered_records": len(filtered_records),
                     "metrics": metrics
@@ -258,9 +255,9 @@ async def websocket_dashboard(websocket: WebSocket):
                 await websocket.send_json({"action": "pong"})
 
     except WebSocketDisconnect:
-        print("Dashboard WebSocket client disconnected")
+        print("Accuracy Dashboard WebSocket client disconnected")
     except Exception as e:
-        print(f"Dashboard WebSocket error: {e}")
+        print(f"Accuracy Dashboard WebSocket error: {e}")
         import traceback
         traceback.print_exc()
         try:
@@ -272,8 +269,8 @@ async def websocket_dashboard(websocket: WebSocket):
             pass
 
 
-@router.websocket("/ws/stream")
-async def websocket_stream(websocket: WebSocket):
+@router.websocket("/ws/accuracy-stream")
+async def websocket_accuracy_stream(websocket: WebSocket):
     """
     Advanced WebSocket endpoint for streaming updates.
 
@@ -293,15 +290,16 @@ async def websocket_stream(websocket: WebSocket):
 
             if action == 'add':
                 # Import here to avoid circular dependency
-                from transport_heads.http import PlayRecord
+                from transport_heads.accuracy_http import PlayRecord
 
                 # Add new records
                 new_records = [PlayRecord(**record) for record in data.get('records', [])]
                 accumulated_records.extend(new_records)
 
                 # Compute metrics on accumulated records
-                from api import compute_metrics
-                metrics = compute_metrics(accumulated_records)
+                from accuracy_api import compute_accuracy
+                allowed_statuses = data.get('allowed_statuses')
+                metrics = compute_accuracy(accumulated_records, allowed_statuses=allowed_statuses)
 
                 # Send update
                 await websocket.send_json({
@@ -321,8 +319,9 @@ async def websocket_stream(websocket: WebSocket):
 
             elif action == 'compute':
                 # Just compute without adding
-                from api import compute_metrics
-                metrics = compute_metrics(accumulated_records)
+                from accuracy_api import compute_accuracy
+                allowed_statuses = data.get('allowed_statuses')
+                metrics = compute_accuracy(accumulated_records, allowed_statuses=allowed_statuses)
 
                 await websocket.send_json({
                     "action": "result",
