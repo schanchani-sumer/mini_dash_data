@@ -40,13 +40,22 @@ def load_metadata() -> Dict[str, Dict[str, str]]:
         with open('metadata.csv', 'r') as f:
             reader = csv.DictReader(f)
             for row in reader:
-                attr = row.get('attribute')
-                if attr:
-                    metadata[attr] = {
+                target_id = row.get('target_id')
+                attribute = row.get('attribute')
+
+                if target_id:
+                    meta_entry = {
                         'status': row.get('status', ''),
                         'entity': row.get('entity', ''),
                         'target_type': row.get('target_type', '')
                     }
+
+                    # Add entry for target_id (primary key)
+                    metadata[target_id] = meta_entry
+
+                    # Also add entry for attribute if different (some CSVs use attribute name)
+                    if attribute and attribute != target_id:
+                        metadata[attribute] = meta_entry
         _metadata_cache = metadata
         print(f"Loaded metadata for {len(metadata)} attributes")
     except Exception as e:
@@ -172,8 +181,10 @@ def compute_metrics(records: List[PlayRecord], allowed_statuses: Optional[List[s
         cv_vals = data["cv"]
         batch_vals = data["batch"]
 
-        # Determine attribute type
-        attr_type = determine_attribute_type(attr, gt_vals[0], cv_vals[0])
+        # Get attribute type from metadata, fallback to auto-detection
+        attr_type = attr_metadata.get('target_type')
+        if not attr_type:
+            attr_type = determine_attribute_type(attr, gt_vals[0], cv_vals[0])
 
         # Compute metrics based on type
         if attr_type == "continuous":

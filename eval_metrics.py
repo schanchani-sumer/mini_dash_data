@@ -59,13 +59,16 @@ def calculate_brier_skill_score(
             targets = torch.tensor([1 if val else 0 for val in y_true], dtype=torch.long)
         else:
             # For categorical, encode labels to integers
-            unique_labels = sorted(set(y_true))
+            # Convert all to strings to handle mixed types (e.g., 1, 2, 3, "4+")
+            y_true_str = [str(val) for val in y_true]
+            y_pred_str = [str(val) for val in y_pred]
+            unique_labels = sorted(set(y_true_str))
             label_to_idx = {label: idx for idx, label in enumerate(unique_labels)}
 
-            targets = torch.tensor([label_to_idx[val] for val in y_true], dtype=torch.long)
+            targets = torch.tensor([label_to_idx[val] for val in y_true_str], dtype=torch.long)
             # For predictions, use one-hot encoding (hard predictions)
-            preds = torch.zeros((len(y_pred), num_classes), dtype=torch.float32)
-            for i, val in enumerate(y_pred):
+            preds = torch.zeros((len(y_pred_str), num_classes), dtype=torch.float32)
+            for i, val in enumerate(y_pred_str):
                 if val in label_to_idx:
                     preds[i, label_to_idx[val]] = 1.0
 
