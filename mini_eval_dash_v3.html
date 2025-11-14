@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SumerSports Metrics Dashboard (WebSocket)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --electric-blue: #06b6d4;
+            --electric-blue-dim: #0891b2;
+            --critical: #ef4444;
+            --warning: #f59e0b;
+            --neutral: #6b7280;
+            --good: #06b6d4;
+            --excellent: #0891b2;
+
+            --bg-primary: #000000;
+            --bg-secondary: #0a0a0a;
+            --bg-elevated: #151a1e;
+            --border: #1f2937;
+            --border-subtle: rgba(6, 182, 212, 0.1);
+
+            --text-primary: #ffffff;
+            --text-secondary: #9ca3af;
+            --text-tertiary: #6b7280;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.4;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .loading-spinner {
+            margin: 0 auto 1rem;
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--electric-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Controls - Compact */
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .control-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 4px;
+            padding: 0.5rem;
+        }
+
+        .control-label {
+            display: block;
+            color: var(--text-tertiary);
+            font-size: 0.6875rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+            margin-bottom: 0.375rem;
+        }
+
+        /* Filter Chips - Toggleable */
+        .filter-chips {
+            display: flex;
+            gap: 0.25rem;
+            flex-wrap: wrap;
+        }
+
+        .chip {
+            padding: 0.25rem 0.5rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 150ms ease-out;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            user-select: none;
+        }
+
+        .chip:hover {
+            border-color: var(--electric-blue-dim);
+            background: rgba(6, 182, 212, 0.1);
+            color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+
+        .chip.active {
+            background: var(--bg-elevated);
+            color: var(--electric-blue);
+            border-color: var(--electric-blue);
+            font-weight: 600;
+        }
+
+        .chip.active:hover {
+            background: var(--bg-elevated);
+            border-color: var(--electric-blue-dim);
+            transform: translateY(-1px);
+        }
+
+        /* Sliders - Compact */
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 3px;
+            background: var(--border);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: var(--text-primary);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: var(--electric-blue-dim);
+        }
+
+        .slider-value {
+            min-width: 45px;
+            text-align: right;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--electric-blue-dim);
+            font-weight: 500;
+        }
+
+        /* Stats Grid - Compact */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 4px;
+            padding: 0.625rem 0.75rem;
+        }
+
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.25rem;
+            font-weight: 500;
+            color: var(--electric-blue-dim);
+            margin-bottom: 0.125rem;
+        }
+
+        .stat-label {
+            color: var(--text-tertiary);
+            font-size: 0.6875rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        /* Two Column Layout for Charts */
+        .charts-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .charts-column {
+            min-height: 0;
+        }
+
+        .column-header {
+            background: var(--bg-elevated);
+            padding: 0.5rem 0.75rem;
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+        }
+
+        /* Chart Container */
+        .chart-container {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 4px;
+            padding: 1rem;
+            height: calc(100vh - 300px);
+            min-height: 600px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-scroll {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        /* Custom Scrollbar */
+        .chart-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chart-scroll::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+            border-radius: 4px;
+        }
+
+        .chart-scroll::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        .chart-scroll::-webkit-scrollbar-thumb:hover {
+            background: var(--text-tertiary);
+        }
+
+        /* Bar Chart */
+        .bar-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            padding: 0.5rem 0;
+        }
+
+        .bar-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0;
+            transition: all 200ms ease-out;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .bar-group:last-child {
+            border-bottom: none;
+        }
+
+        .attribute-info {
+            width: 280px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .attribute-label {
+            font-size: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex-shrink: 1;
+            min-width: 0;
+        }
+
+        .bars-wrapper {
+            flex: 1;
+            display: flex;
+            gap: 0.25rem;
+            align-items: flex-end;
+            height: 40px;
+            transition: all 200ms ease-out;
+        }
+
+        .bar-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            height: 100%;
+        }
+
+        .bar {
+            width: 100%;
+            border-radius: 2px 2px 0 0;
+            transition: height 400ms ease-out;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .bar:hover {
+            opacity: 0.8;
+        }
+
+        .bar-cv {
+            background: var(--electric-blue-dim);
+        }
+
+        .bar-batch {
+            background: var(--text-tertiary);
+        }
+
+        .bar-value {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .meta-badge {
+            padding: 0.125rem 0.375rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 2px;
+            font-size: 0.625rem;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        /* Legend - Compact */
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 4px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+
+        .legend-box {
+            width: 24px;
+            height: 8px;
+            border-radius: 2px;
+        }
+
+        .legend-text {
+            font-size: 0.6875rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+            font-weight: 500;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(2px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .bar-group {
+            animation: fadeIn 200ms ease-out backwards;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .charts-wrapper {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.375rem 0.75rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--neutral);
+        }
+
+        .status-dot.connected {
+            background: var(--good);
+        }
+
+        .status-dot.disconnected {
+            background: var(--critical);
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Connecting...</span>
+    </div>
+
+    <div class="container">
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <div>Connecting to server...</div>
+        </div>
+
+        <div id="mainContent" style="display: none;">
+            <div class="controls">
+                <div class="control-card">
+                    <label class="control-label">Min Instances (per attr)</label>
+                    <div class="slider-container">
+                        <input type="range" id="instancesSlider" min="0" max="100" value="10" step="1">
+                        <span class="slider-value">10</span>
+                    </div>
+                </div>
+
+                <div class="control-card">
+                    <label class="control-label">Min Completeness</label>
+                    <div class="slider-container">
+                        <input type="range" id="completenessSlider" min="0" max="1" value="0" step="0.01">
+                        <span class="slider-value">0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-box" style="background: var(--electric-blue-dim);"></div>
+                    <span class="legend-text">CV + XY Score</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: var(--text-tertiary);"></div>
+                    <span class="legend-text">Batch + XY Score</span>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="avgCv">—</div>
+                    <div class="stat-label">Avg CV Score</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="avgBatch">—</div>
+                    <div class="stat-label">Avg Batch Score</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="playCount">—</div>
+                    <div class="stat-label">Play Attrs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="playerPlayCount">—</div>
+                    <div class="stat-label">Player Attrs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="filteredPlays">—</div>
+                    <div class="stat-label">Plays (Filtered)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="filteredPlayerPlays">—</div>
+                    <div class="stat-label">Player Plays (Filtered)</div>
+                </div>
+            </div>
+
+            <div class="charts-wrapper">
+                <div class="charts-column">
+                    <div class="column-header">Play Attributes</div>
+                    <div class="chart-container">
+                        <div class="chart-scroll">
+                            <div id="playCharts" class="bar-chart"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="charts-column">
+                    <div class="column-header">Player Play Attributes</div>
+                    <div class="chart-container">
+                        <div class="chart-scroll">
+                            <div id="playerPlayCharts" class="bar-chart"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const WS_URL = 'wss://minidashdata-production.up.railway.app/ws/dashboard';
+
+        let ws = null;
+        let currentFilters = {
+            minInstances: 10,
+            minCompleteness: 0
+        };
+
+        let playMetrics = [];
+        let playerPlayMetrics = [];
+        let playFilteredCount = 0;
+        let playerPlayFilteredCount = 0;
+
+        // WebSocket connection
+        function connect() {
+            ws = new WebSocket(WS_URL);
+
+            ws.onopen = function() {
+                console.log('WebSocket connected');
+                document.getElementById('statusDot').classList.add('connected');
+                document.getElementById('statusDot').classList.remove('disconnected');
+                document.getElementById('statusText').textContent = 'Connected';
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+
+                // Request initial data
+                requestMetrics('play');
+                requestMetrics('player_play');
+            };
+
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+
+                if (data.action === 'error') {
+                    console.error('Server error:', data.error);
+                    return;
+                }
+
+                if (data.action === 'result') {
+                    handleMetricsResponse(data);
+                }
+            };
+
+            ws.onerror = function(error) {
+                console.error('WebSocket error:', error);
+                document.getElementById('statusDot').classList.remove('connected');
+                document.getElementById('statusDot').classList.add('disconnected');
+                document.getElementById('statusText').textContent = 'Error';
+            };
+
+            ws.onclose = function() {
+                console.log('WebSocket disconnected');
+                document.getElementById('statusDot').classList.remove('connected');
+                document.getElementById('statusDot').classList.add('disconnected');
+                document.getElementById('statusText').textContent = 'Disconnected';
+
+                // Attempt reconnection after 3 seconds
+                setTimeout(connect, 3000);
+            };
+        }
+
+        function requestMetrics(entity) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    action: 'compute',
+                    entity: entity,
+                    filters: currentFilters
+                }));
+            }
+        }
+
+        function handleMetricsResponse(data) {
+            if (data.entity === 'play') {
+                playMetrics = data.metrics;
+                playFilteredCount = data.filtered_records;
+            } else {
+                playerPlayMetrics = data.metrics;
+                playerPlayFilteredCount = data.filtered_records;
+            }
+
+            // Update UI
+            renderCharts();
+        }
+
+        function renderCharts() {
+            const playContainer = document.getElementById('playCharts');
+            const playerPlayContainer = document.getElementById('playerPlayCharts');
+
+            playContainer.innerHTML = '';
+            playerPlayContainer.innerHTML = '';
+
+            let playCount = 0, playerPlayCount = 0;
+            let sumCv = 0, sumBatch = 0;
+            let countCv = 0, countBatch = 0;
+
+            function renderMetric(metric, container) {
+                // Skip if below min instances
+                if (metric.n_instances < currentFilters.minInstances) return;
+
+                // Calculate averages
+                if (metric.cv_xy_score !== null && !isNaN(metric.cv_xy_score)) {
+                    sumCv += metric.cv_xy_score;
+                    countCv++;
+                }
+                if (metric.batch_xy_score !== null && !isNaN(metric.batch_xy_score)) {
+                    sumBatch += metric.batch_xy_score;
+                    countBatch++;
+                }
+
+                // Format scores (already 0-1, convert to %)
+                const cvValue = (metric.cv_xy_score !== null && !isNaN(metric.cv_xy_score))
+                    ? (metric.cv_xy_score * 100).toFixed(1)
+                    : 'N/A';
+                const batchValue = (metric.batch_xy_score !== null && !isNaN(metric.batch_xy_score))
+                    ? (metric.batch_xy_score * 100).toFixed(1)
+                    : 'N/A';
+
+                // Height for bars (clamp between 5-100)
+                const cvHeight = (metric.cv_xy_score !== null && !isNaN(metric.cv_xy_score))
+                    ? Math.max(5, Math.min(100, metric.cv_xy_score * 100))
+                    : 0;
+                const batchHeight = (metric.batch_xy_score !== null && !isNaN(metric.batch_xy_score))
+                    ? Math.max(5, Math.min(100, metric.batch_xy_score * 100))
+                    : 0;
+
+                const barGroup = document.createElement('div');
+                barGroup.className = 'bar-group';
+
+                const typeAbbrev = metric.type === 'boolean' ? 'BOOL' :
+                                  metric.type === 'categorical' ? 'CAT' : 'CONT';
+
+                barGroup.innerHTML = `
+                    <div class="attribute-info">
+                        <div class="attribute-label" title="${metric.attribute}">${metric.attribute}</div>
+                        <span class="meta-badge">${typeAbbrev}</span>
+                        <span class="meta-badge">${metric.n_instances}</span>
+                    </div>
+                    <div class="bars-wrapper">
+                        <div class="bar-item">
+                            <div class="bar bar-cv" style="height: ${cvHeight}%;">
+                                <div class="bar-value">${cvValue}%</div>
+                            </div>
+                        </div>
+                        <div class="bar-item">
+                            <div class="bar bar-batch" style="height: ${batchHeight}%;">
+                                <div class="bar-value">${batchValue}%</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(barGroup);
+
+                if (container === playContainer) {
+                    playCount++;
+                } else {
+                    playerPlayCount++;
+                }
+            }
+
+            playMetrics.forEach(metric => renderMetric(metric, playContainer));
+            playerPlayMetrics.forEach(metric => renderMetric(metric, playerPlayContainer));
+
+            // Update stats
+            document.getElementById('avgCv').textContent = countCv > 0
+                ? ((sumCv / countCv) * 100).toFixed(1) + '%'
+                : '—';
+            document.getElementById('avgBatch').textContent = countBatch > 0
+                ? ((sumBatch / countBatch) * 100).toFixed(1) + '%'
+                : '—';
+            document.getElementById('playCount').textContent = playCount;
+            document.getElementById('playerPlayCount').textContent = playerPlayCount;
+            document.getElementById('filteredPlays').textContent = playFilteredCount.toLocaleString();
+            document.getElementById('filteredPlayerPlays').textContent = playerPlayFilteredCount.toLocaleString();
+        }
+
+        // Slider controls
+        document.getElementById('instancesSlider').addEventListener('input', function(e) {
+            currentFilters.minInstances = parseInt(e.target.value);
+            e.target.nextElementSibling.textContent = e.target.value;
+            renderCharts(); // Just re-render, no need to fetch
+        });
+
+        document.getElementById('completenessSlider').addEventListener('input', function(e) {
+            currentFilters.minCompleteness = parseFloat(e.target.value);
+            e.target.nextElementSibling.textContent = parseFloat(e.target.value).toFixed(2);
+
+            // Re-fetch data from server with new completeness filter
+            requestMetrics('play');
+            requestMetrics('player_play');
+        });
+
+        // Initialize connection
+        connect();
+    </script>
+</body>
+</html>
